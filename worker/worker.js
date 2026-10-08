@@ -23,7 +23,7 @@ const same = (a, b) => !!a && !!b && (a.includes(b) || b.includes(a));
 
 async function getJson(u, ttl) {
   const r = await fetch(u, { headers: { 'User-Agent': UA, Accept: 'application/json' }, cf: { cacheTtl: ttl, cacheEverything: true } });
-  if (!r.ok) throw new Error('http ' + r.status);
+  if (!r.ok) throw new Error('http ' + r.status + ' ' + (await r.text()).slice(0, 200));
   return r.json();
 }
 
@@ -84,6 +84,7 @@ async function handleSearch(url, env, h) {
     }));
   } catch (e) {
     tracks = [];
+    if (url.searchParams.get('debug') === '1') return json({ itunesError: String(e && e.message || e) }, 200, h);
   }
 
   // Names that count as "the same artist" / titles worth asking GetSongBPM about
