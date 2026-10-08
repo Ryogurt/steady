@@ -461,7 +461,10 @@ $('searchForm').addEventListener('submit',async e=>{
   try{
     let tracks=[];try{tracks=await findTracks(a,t)}catch(err){tracks=[]}
     // other spellings from the Apple Music match (only when it is the artist the user meant)
-    const top=tracks.find(x=>!a||[x.artist,x.artistEn].some(n=>{const p=nrm(n),q=nrm(a);return p&&q&&(p.includes(q)||q.includes(p))}));
+    const near=(x,y)=>{const p=nrm(x),q=nrm(y);return !!p&&!!q&&(p.includes(q)||q.includes(p))};
+    // Apple Music searched with artist + title together, so a result whose title matches is trusted
+    // even when the artist is spelled differently (Kenshi Yonezu -> 米津玄師)
+    const top=tracks.find(x=>!a||near(x.artist,a)||near(x.artistEn,a))||tracks.find(x=>near(x.title,t)||near(x.titleEn,t));
     const aa=top?[top.artist,top.artistEn].filter(Boolean):[], at=top?[top.title,top.titleEn].filter(Boolean):[];
     if(top)tracks=[top].concat(tracks.filter(x=>x!==top));
     let d={songs:[]};
