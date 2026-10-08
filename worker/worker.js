@@ -43,7 +43,11 @@ export default {
         headers: { 'User-Agent': 'SteadyRhythmApp/1.0 (+https://ryogurt.github.io/steady/)', 'Accept': 'application/json' },
         cf: { cacheTtl: 86400, cacheEverything: true },
       });
-      const d = await r.json();
+      const raw = await r.text();
+      if (url.searchParams.get('debug') === '1') {
+        return json({ status: r.status, body: raw.slice(0, 1500) }, 200, h);
+      }
+      const d = JSON.parse(raw);
       const list = Array.isArray(d.search) ? d.search : [];
       const songs = list
         .filter((s) => s && s.tempo)
