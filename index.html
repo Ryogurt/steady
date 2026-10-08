@@ -388,7 +388,7 @@ async function fetchPreview(t){
 }
 const nrm=v=>String(v||'').toLowerCase().normalize('NFKC').replace(/[\s\p{P}\p{S}]/gu,'');
 let previewAudio=null;
-function trackRow(t,auto){
+function trackRow(t,auto,dbTempo){
   const row=el('div','track');
   if(t.art){const img=el('img');img.src=t.art;img.alt='';img.width=44;img.height=44;img.loading='lazy';row.appendChild(img)}
   const mid=el('div','tmid');
@@ -412,10 +412,15 @@ function trackRow(t,auto){
       const res=await analyzeAudio(await fetchPreview(t));
       if(!res)throw new Error('short');
       out.innerHTML='';
+      // If the database has this song, fix a half/double-time reading to match it
+      let fixed='';
+      if(dbTempo){for(const [m,lab] of [[2,'倍'],[0.5,'半分']]){const v=res.bpm*m;if(Math.abs(v-dbTempo)/dbTempo<0.03&&Math.abs(res.bpm-dbTempo)/dbTempo>=0.03){res.bpm=Math.round(v*10)/10;fixed=lab}}}
       const line=el('div','row');
       const big=el('span','big',String(res.bpm));big.appendChild(el('span','note',' BPM'));line.appendChild(big);
       line.appendChild(el('span','conf',{high:'確度：高',medium:'確度：中',low:'確度：低'}[res.confidence]));
-      out.appendChild(line);out.appendChild(bpmChoices(res.bpm));
+      out.appendChild(line);
+      if(fixed)out.appendChild(el('div','note','解析では'+fixed+'の値が出たので、データベースの '+dbTempo+' BPM に合わせて直しました。'));
+      out.appendChild(bpmChoices(res.bpm));
     }catch(err){out.textContent='解析できませんでした。もう一度押すか、タップで測ってください。'}
     finally{meas.disabled=false}
   };
@@ -430,7 +435,8 @@ function showSongs(d){
   if(!songs.length&&!tracks.length){sr.appendChild(el('div',null,'見つかりませんでした。つづりを変えるか、「Webで調べる」・下のタップで測ってください。'));return}
   if(tracks.length){
     sr.appendChild(el('div','sect','試聴音源から測る'));
-    tracks.slice(0,3).forEach((t,i)=>sr.appendChild(trackRow(t,i===0)));
+    const dbHit=songs.find(s=>s.match);
+    tracks.slice(0,3).forEach((t,i)=>sr.appendChild(trackRow(t,i===0,i===0&&dbHit?dbHit.tempo:null)));
     sr.appendChild(el('div','note','30秒の試聴を聴いてBPMを計算します。倍・半分の値が出ることがあるので、試聴に合わせて叩いて確かめてください。'));
   }
   sr.appendChild(el('div','sect','データベース（GetSongBPM）'));
