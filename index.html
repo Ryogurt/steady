@@ -258,10 +258,11 @@ function useBtn(bpm,label){const b=el('button','use',label||'このBPMを使う'
 function showSongs(songs){
   sr.hidden=false;sr.innerHTML='';
   if(!songs.length){sr.appendChild(el('div',null,'見つかりませんでした。英語表記やつづりを変えるか、「Webで調べる」・下のタップで測ってください。'));return}
+  if(qA.value.trim()&&!songs.some(s=>s.match))sr.appendChild(el('div','note','アーティスト名が一致する曲は見つからなかったので、同じ曲名の結果を出しています（データベース上の名義が違うこともあります）。'));
   songs.slice(0,6).forEach(s=>{
     const row=el('div','row song');
     const left=el('div');
-    left.appendChild(el('div',null,s.title||''));
+    const t=el('div',null,s.title||'');if(s.match)t.appendChild(el('span','conf',' 一致'));left.appendChild(t);
     left.appendChild(el('div','note',[s.artist,s.time_sig?s.time_sig+'拍子':''].filter(Boolean).join(' ・ ')));
     const right=el('div','pick');
     const big=el('span','big',String(s.tempo));right.appendChild(big);right.appendChild(el('span','note',' BPM'));
