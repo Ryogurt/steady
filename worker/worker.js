@@ -36,8 +36,9 @@ async function itunesSearch(term) {
   u.searchParams.set('entity', 'song');
   u.searchParams.set('limit', '5');
   u.searchParams.set('lang', 'ja_jp');
-  const d = await getJson(u.toString(), 86400);
-  return (d.results || []).filter((t) => t.trackId && t.previewUrl);
+  const d = await getJson(u.toString(), 3600);
+  if (!d.results || !d.results.length) throw new Error('itunes empty: ' + JSON.stringify(d).slice(0, 300));
+  return d.results.filter((t) => t.trackId && t.previewUrl);
 }
 // The same tracks with English / romanized names (e.g. 米津玄師 -> Kenshi Yonezu)
 async function itunesEnglishNames(ids) {
