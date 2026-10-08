@@ -414,7 +414,7 @@ function trackRow(t,auto,dbTempo){
       out.innerHTML='';
       // If the database has this song, fix a half/double-time reading to match it
       let fixed='';
-      if(dbTempo){for(const [m,lab] of [[2,'倍'],[0.5,'半分']]){const v=res.bpm*m;if(Math.abs(v-dbTempo)/dbTempo<0.03&&Math.abs(res.bpm-dbTempo)/dbTempo>=0.03){res.bpm=Math.round(v*10)/10;fixed=lab}}}
+      if(dbTempo){for(const [m,lab] of [[2,'半分'],[0.5,'倍']]){const v=res.bpm*m;if(Math.abs(v-dbTempo)/dbTempo<0.03&&Math.abs(res.bpm-dbTempo)/dbTempo>=0.03){res.bpm=Math.round(v*10)/10;fixed=lab}}}
       const line=el('div','row');
       const big=el('span','big',String(res.bpm));big.appendChild(el('span','note',' BPM'));line.appendChild(big);
       line.appendChild(el('span','conf',{high:'確度：高',medium:'確度：中',low:'確度：低'}[res.confidence]));
