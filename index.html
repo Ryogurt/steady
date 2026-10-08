@@ -366,6 +366,27 @@ function useBtn(bpm,label){const b=el('button','use',label||'このBPMを使う'
 function bpmChoices(bpm){const box=el('div','alts');box.appendChild(useBtn(bpm,'使う'));
   if(bpm*2<=240)box.appendChild(useBtn(Math.round(bpm*20)/10,'倍 '+Math.round(bpm*2)));
   if(bpm/2>=40)box.appendChild(useBtn(Math.round(bpm*5)/10,'半分 '+Math.round(bpm/2)));return box}
+function jsonp(url){return new Promise((res,rej)=>{
+  const cb='itcb'+Date.now()+Math.floor(Math.random()*1e6),sc=document.createElement('script');
+  const done=()=>{clearTimeout(tm);try{delete window[cb]}catch(e){window[cb]=undefined}sc.remove()};
+  const tm=setTimeout(()=>{done();rej(new Error('timeout'))},8000);
+  window[cb]=d=>{done();res(d)};sc.onerror=()=>{done();rej(new Error('load'))};
+  sc.src=url+(url.includes('?')?'&':'?')+'callback='+cb;document.head.appendChild(sc)})}
+// Apple Music (Japanese store): find the track, and its English/romanized names
+async function findTracks(artist,title){
+  const term=encodeURIComponent((artist+' '+title).trim());
+  const d=await jsonp('https://itunes.apple.com/search?term='+term+'&country=JP&media=music&entity=song&limit=5&lang=ja_jp');
+  const found=(d.results||[]).filter(t=>t.trackId&&t.previewUrl);
+  let en={};
+  if(found.length){try{const e=await jsonp('https://itunes.apple.com/lookup?id='+found.map(t=>t.trackId).join(',')+'&country=JP&lang=en_us');
+    (e.results||[]).forEach(t=>{if(t.trackId)en[t.trackId]={title:t.trackName||'',artist:t.artistName||''}})}catch(err){}}
+  return found.map(t=>({id:t.trackId,title:t.trackName||'',artist:t.artistName||'',titleEn:(en[t.trackId]||{}).title||'',artistEn:(en[t.trackId]||{}).artist||'',art:t.artworkUrl100||'',preview:t.previewUrl}));
+}
+async function fetchPreview(t){
+  try{const r=await fetch(t.preview);if(r.ok)return await r.arrayBuffer()}catch(e){}
+  const r=await fetch(PROXY_URL+'preview?src='+encodeURIComponent(t.preview));if(!r.ok)throw new Error(r.status);return r.arrayBuffer();
+}
+const nrm=v=>String(v||'').toLowerCase().normalize('NFKC').replace(/[\s\p{P}\p{S}]/gu,'');
 let previewAudio=null;
 function trackRow(t,auto){
   const row=el('div','track');
@@ -380,7 +401,7 @@ function trackRow(t,auto){
   play.onclick=()=>{
     if(previewAudio&&previewAudio._id===t.id&&!previewAudio.paused){previewAudio.pause();play.textContent='▶ 試聴';return}
     if(previewAudio){previewAudio.pause();sr.querySelectorAll('.tbtns .use:first-child').forEach(x=>x.textContent='▶ 試聴')}
-    previewAudio=new Audio(PROXY_URL+'preview?id='+t.id);previewAudio._id=t.id;
+    previewAudio=new Audio(t.preview);previewAudio._id=t.id;
     previewAudio.play().then(()=>{play.textContent='■ 停止'}).catch(()=>{out.textContent='再生できませんでした'});
     previewAudio.onended=()=>{play.textContent='▶ 試聴'};
   };
@@ -388,8 +409,7 @@ function trackRow(t,auto){
   const run=async()=>{
     meas.disabled=true;out.textContent='試聴音源を解析中…（数秒かかります）';
     try{
-      const r=await fetch(PROXY_URL+'preview?id='+t.id);if(!r.ok)throw new Error(r.status);
-      const res=await analyzeAudio(await r.arrayBuffer());
+      const res=await analyzeAudio(await fetchPreview(t));
       if(!res)throw new Error('short');
       out.innerHTML='';
       const line=el('div','row');
@@ -439,9 +459,15 @@ $('searchForm').addEventListener('submit',async e=>{
   if(PROXY_URL.indexOf('__')===0){sr.hidden=false;sr.textContent='検索の準備中です。「Webで調べる」から確認してください。';return}
   $('askBtn').disabled=true;sr.hidden=false;sr.textContent='調べています…';
   try{
-    const r=await fetch(PROXY_URL+'?artist='+encodeURIComponent(a)+'&title='+encodeURIComponent(t));
-    const d=await r.json();
-    if(!r.ok)throw new Error(d.error||r.status);
+    let tracks=[];try{tracks=await findTracks(a,t)}catch(err){tracks=[]}
+    // other spellings from the Apple Music match (only when it is the artist the user meant)
+    const top=tracks.find(x=>!a||[x.artist,x.artistEn].some(n=>{const p=nrm(n),q=nrm(a);return p&&q&&(p.includes(q)||q.includes(p))}));
+    const aa=top?[top.artist,top.artistEn].filter(Boolean):[], at=top?[top.title,top.titleEn].filter(Boolean):[];
+    if(top)tracks=[top].concat(tracks.filter(x=>x!==top));
+    let d={songs:[]};
+    try{const r=await fetch(PROXY_URL+'?artist='+encodeURIComponent(a)+'&title='+encodeURIComponent(t)+'&aa='+encodeURIComponent(aa.join('\n'))+'&at='+encodeURIComponent(at.join('\n')));
+      d=await r.json();if(!r.ok)throw new Error(d.error||r.status)}catch(err){if(!tracks.length)throw err;d={songs:[]}}
+    d.tracks=tracks;
     showSongs(d);
   }catch(err){sr.textContent='うまく調べられませんでした。時間をおいてもう一度試すか、「Webで調べる」から確認してください。'}
   finally{$('askBtn').disabled=false}

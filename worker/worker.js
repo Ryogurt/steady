@@ -1,6 +1,7 @@
 // Steady BPM search proxy (Cloudflare Worker)
-//  GET /?artist=&title=   -> { songs: [GetSongBPM results], tracks: [Apple Music (iTunes) matches] }
-//  GET /preview?id=<trackId> -> the 30-second iTunes preview audio (for in-browser tempo analysis)
+//  GET /?artist=&title=&aa=&at=  -> { songs: [GetSongBPM results] }
+//      aa / at: other spellings of the artist / title (from Apple Music, looked up by the page)
+//  GET /preview?src=<Apple preview URL> -> that 30-second preview audio (for in-browser tempo analysis)
 // Keeps the GetSongBPM API key secret (secret variable GETSONGBPM_KEY) and answers the Steady site.
 const ALLOWED_ORIGINS = ['https://ryogurt.github.io'];
 const UA = 'SteadyRhythmApp/1.1 (+https://ryogurt.github.io/steady/)';
@@ -27,32 +28,6 @@ async function getJson(u, ttl) {
   return r.json();
 }
 
-// ---- Apple Music (iTunes Search API, Japanese store) ----
-async function itunesSearch(term) {
-  const u = new URL('https://itunes.apple.com/search');
-  u.searchParams.set('term', term);
-  u.searchParams.set('country', 'JP');
-  u.searchParams.set('media', 'music');
-  u.searchParams.set('entity', 'song');
-  u.searchParams.set('limit', '5');
-  u.searchParams.set('lang', 'ja_jp');
-  const d = await getJson(u.toString(), 3600);
-  if (!d.results || !d.results.length) throw new Error('itunes empty: ' + JSON.stringify(d).slice(0, 300));
-  return d.results.filter((t) => t.trackId && t.previewUrl);
-}
-// The same tracks with English / romanized names (e.g. 米津玄師 -> Kenshi Yonezu)
-async function itunesEnglishNames(ids) {
-  if (!ids.length) return {};
-  const u = new URL('https://itunes.apple.com/lookup');
-  u.searchParams.set('id', ids.join(','));
-  u.searchParams.set('country', 'JP');
-  u.searchParams.set('lang', 'en_us');
-  const d = await getJson(u.toString(), 86400);
-  const out = {};
-  (d.results || []).forEach((t) => { if (t.trackId) out[t.trackId] = { title: t.trackName || '', artist: t.artistName || '' }; });
-  return out;
-}
-
 // ---- GetSongBPM ----
 async function bpmSearch(env, type, lookup) {
   const u = new URL('https://api.getsong.co/search/');
@@ -69,41 +44,18 @@ async function handleSearch(url, env, h) {
   const artist = (url.searchParams.get('artist') || '').trim().slice(0, 100);
   if (!title) return json({ error: 'title required' }, 400, h);
 
-  // 1) Identify the track on Apple Music to learn the other spellings of its names.
-  let tracks = [];
-  try {
-    const found = await itunesSearch((artist + ' ' + title).trim());
-    const en = await itunesEnglishNames(found.map((t) => t.trackId)).catch(() => ({}));
-    tracks = found.map((t) => ({
-      id: t.trackId,
-      title: t.trackName || '',
-      artist: t.artistName || '',
-      titleEn: (en[t.trackId] && en[t.trackId].title) || '',
-      artistEn: (en[t.trackId] && en[t.trackId].artist) || '',
-      art: t.artworkUrl100 || '',
-      seconds: t.trackTimeMillis ? Math.round(t.trackTimeMillis / 1000) : null,
-    }));
-  } catch (e) {
-    tracks = [];
-    if (url.searchParams.get('debug') === '1') return json({ itunesError: String(e && e.message || e) }, 200, h);
-  }
-
-  // Names that count as "the same artist" / titles worth asking GetSongBPM about
-  const top = tracks[0];
-  const artistNames = new Set([norm(artist)]);
-  const titles = [title];
-  if (top && (!artist || same(norm(top.artist), norm(artist)) || same(norm(top.artistEn), norm(artist)) || !artist)) {
-    artistNames.add(norm(top.artist));
-    artistNames.add(norm(top.artistEn));
-    [top.title, top.titleEn].forEach((t) => { if (t && !titles.some((x) => norm(x) === norm(t))) titles.push(t); });
-  }
+  // Other spellings found by the page on Apple Music (e.g. 米津玄師 / Kenshi Yonezu)
+  const list2 = (k) => (url.searchParams.get(k) || '').split('\n').map((v) => v.trim().slice(0, 100)).filter(Boolean).slice(0, 4);
+  const artistNames = new Set([artist, ...list2('aa')].map(norm));
   artistNames.delete('');
+  const titles = [title];
+  list2('at').forEach((t) => { if (!titles.some((x) => norm(x) === norm(t))) titles.push(t); });
   const isMatch = (name) => { const n = norm(name); return [...artistNames].some((a) => same(n, a)); };
 
-  // 2) Ask GetSongBPM with each spelling of the title (max 2), plus title+artist if still no match.
+  // 2) Ask GetSongBPM with each spelling of the title (max 3), plus title+artist if still no match.
   let list = [];
   try {
-    for (const t of titles.slice(0, 2)) list = list.concat(await bpmSearch(env, 'song', t));
+    for (const t of titles.slice(0, 3)) list = list.concat(await bpmSearch(env, 'song', t));
     if (artist && !list.some((s) => isMatch(s && s.artist && s.artist.name))) {
       list = (await bpmSearch(env, 'both', `song:${title} artist:${artist}`)).concat(list);
     }
@@ -134,19 +86,14 @@ async function handleSearch(url, env, h) {
     .sort((x, y) => Number(y.match) - Number(x.match))
     .slice(0, 10);
 
-  return json({ songs, tracks: tracks.slice(0, 3) }, 200, { ...h, 'Cache-Control': 'public, max-age=3600' });
+  return json({ songs }, 200, { ...h, 'Cache-Control': 'public, max-age=3600' });
 }
 
 async function handlePreview(url, h) {
-  const id = (url.searchParams.get('id') || '').replace(/\D/g, '').slice(0, 20);
-  if (!id) return json({ error: 'id required' }, 400, h);
-  const d = await getJson(`https://itunes.apple.com/lookup?id=${id}&country=JP`, 86400);
-  const t = (d.results || [])[0];
-  const src = t && t.previewUrl;
-  if (!src) return json({ error: 'no preview' }, 404, h);
-  const host = new URL(src).hostname;
-  if (!/(\.|^)(apple\.com|mzstatic\.com)$/.test(host)) return json({ error: 'bad host' }, 400, h);
-  const r = await fetch(src, { headers: { 'User-Agent': UA }, cf: { cacheTtl: 86400, cacheEverything: true } });
+  let src;
+  try { src = new URL(url.searchParams.get('src') || ''); } catch (e) { return json({ error: 'src required' }, 400, h); }
+  if (src.protocol !== 'https:' || !/(\.|^)(apple\.com|mzstatic\.com)$/.test(src.hostname)) return json({ error: 'bad host' }, 400, h);
+  const r = await fetch(src.toString(), { headers: { 'User-Agent': UA }, cf: { cacheTtl: 86400, cacheEverything: true } });
   if (!r.ok) return json({ error: 'preview ' + r.status }, 502, h);
   return new Response(r.body, {
     status: 200,
