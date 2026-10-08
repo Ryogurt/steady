@@ -246,7 +246,7 @@ $('tapBpm').addEventListener('pointerdown',e=>{
 });
 
 // ---------- song search (GetSongBPM via proxy) ----------
-const PROXY_URL='__PROXY_URL__';
+const PROXY_URL='https://steady-bpm.ryo-private-mail.workers.dev/';
 const qA=$('qArtist'),qT=$('qTitle'),sr=$('searchResult');
 qA.value=store.get('steady.qA','');qT.value=store.get('steady.qT','');
 function updWebLink(){$('webLink').href='https://www.google.com/search?q='+encodeURIComponent((qA.value+' '+qT.value).trim()+' BPM')}
