@@ -65,6 +65,13 @@ select{width:100%;font:inherit;padding:8px 10px;border-radius:8px;border:1px sol
 .credit{grid-column:1/-1}.credit a{color:var(--brass)}
 .result .song{border-bottom:1px solid var(--line);padding-bottom:8px}
 .result .pick{display:flex;align-items:baseline;gap:8px}
+.sect{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-top:4px}
+.track{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:start;border-bottom:1px solid var(--line);padding-bottom:10px}
+.track img{border-radius:6px;grid-row:span 2}
+.track .tmid{min-width:0}.track .ttl{font-weight:700;overflow-wrap:anywhere}
+.track .tbtns{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}
+.track .tout{margin-top:6px;display:flex;flex-direction:column;gap:6px}
+.alts{display:flex;gap:6px;flex-wrap:wrap}
 .tapbpm.hit{background:var(--surface-2)}
 .tapbpm small{font-weight:400;font-size:12px;color:var(--muted)}
 .calib{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted);flex-wrap:wrap}
@@ -130,7 +137,7 @@ canvas{width:100%;height:190px;display:block;margin-top:14px}
           <a class="weblink" id="webLink" href="https://www.google.com/search?q=BPM" target="_blank" rel="noopener">Webで調べる ↗</a>
         </div>
         <div class="result" id="searchResult" hidden></div>
-        <p class="note credit">BPMデータ提供：<a href="https://getsongbpm.com" target="_blank" rel="noopener">GetSongBPM.com</a></p>
+        <p class="note credit">BPMデータ提供：<a href="https://getsongbpm.com" target="_blank" rel="noopener">GetSongBPM.com</a> ・ 曲情報と試聴：Apple Music</p>
       </form>
       <button class="tapbpm" id="tapBpm">ここを曲に合わせて叩く → BPMを測る<small id="tapBpmInfo">4回以上叩くと表示されます</small></button>
     </div>
@@ -245,7 +252,108 @@ $('tapBpm').addEventListener('pointerdown',e=>{
   }else $('tapBpmInfo').textContent=tb.length+'回目…';
 });
 
-// ---------- song search (GetSongBPM via proxy) ----------
+// ---------- tempo estimation from audio (spectral flux + comb-filtered autocorrelation) ----------
+function fftMag(re, im) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let cr = 1, ci = 0;
+      for (let j = 0; j < len / 2; j++) {
+        const a = i + j, b = a + len / 2;
+        const tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr;
+        re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
+        const nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr;
+      }
+    }
+  }
+}
+function estimateTempo(x, sr) {
+  const N = 1024, hop = 128, half = N / 2;
+  const frames = Math.floor((x.length - N) / hop);
+  if (frames < 200) return null;
+  const win = new Float32Array(N);
+  for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / N);
+  const re = new Float64Array(N), im = new Float64Array(N);
+  let prev = new Float32Array(half), cur = new Float32Array(half);
+  const flux = new Float32Array(frames);
+  const maxBin = Math.min(half, Math.floor(8000 / (sr / N)));
+  for (let f = 0; f < frames; f++) {
+    const o = f * hop;
+    for (let i = 0; i < N; i++) { re[i] = x[o + i] * win[i]; im[i] = 0; }
+    fftMag(re, im);
+    let s = 0;
+    for (let k = 1; k < maxBin; k++) {
+      const m = Math.log1p(100 * Math.hypot(re[k], im[k]));
+      cur[k] = m;
+      const d = m - prev[k];
+      if (d > 0 && f > 0) s += d;
+    }
+    flux[f] = s;
+    const t = prev; prev = cur; cur = t;
+  }
+  // remove slow trend, keep the rises
+  const fr = sr / hop, w = Math.round(fr * 0.4);
+  const env = new Float32Array(frames);
+  let acc = 0;
+  for (let f = 0; f < frames; f++) {
+    acc += flux[f]; if (f >= w) acc -= flux[f - w];
+    const avg = acc / Math.min(f + 1, w);
+    env[f] = Math.max(0, flux[f] - avg);
+  }
+  // autocorrelation up to 4 beats at the slowest tempo
+  const minBpm = 50, maxBpm = 220;
+  const maxLag = Math.min(frames - 1, Math.ceil(fr * 60 / minBpm * 8) + 2);
+  const ac = new Float64Array(maxLag + 1);
+  for (let L = 0; L <= maxLag; L++) {
+    let s = 0;
+    for (let f = L; f < frames; f++) s += env[f] * env[f - L];
+    ac[L] = s / (frames - L);
+  }
+  const a0 = ac[0] || 1;
+  for (let L = 0; L <= maxLag; L++) ac[L] /= a0;
+  const at = (l) => { if (l >= maxLag) return 0; const i = Math.floor(l), t = l - i; return ac[i] * (1 - t) + ac[i + 1] * t; };
+  const comb = (bpm, K) => { const lag = fr * 60 / bpm; let s = 0; for (let k = 1; k <= K; k++) s += at(lag * k); return s / K; };
+  // coarse scan with a tempo prior centred on 120 BPM
+  let best = 0, bestScore = -1;
+  const scores = [];
+  for (let b = minBpm; b <= maxBpm; b += 0.1) {
+    const sc = comb(b, 4);
+    scores.push(sc);
+    const p = Math.exp(-0.5 * Math.pow(Math.log2(b / 120) / 0.9, 2));
+    if (sc * p > bestScore) { bestScore = sc * p; best = b; }
+  }
+  // fine tune with more multiples (sharper peak)
+  let fine = best, fineScore = -1;
+  for (let b = best - 1.5; b <= best + 1.5; b += 0.01) {
+    const sc = comb(b, 8);
+    if (sc > fineScore) { fineScore = sc; fine = b; }
+  }
+  const mean = scores.reduce((s, v) => s + v, 0) / scores.length;
+  const sd = Math.sqrt(scores.reduce((s, v) => s + (v - mean) ** 2, 0) / scores.length) || 1;
+  const z = (comb(best, 4) - mean) / sd;
+  const rounded = Math.abs(fine - Math.round(fine)) < 0.25 ? Math.round(fine) : Math.round(fine * 10) / 10;
+  return { bpm: rounded, raw: fine, confidence: z > 3 ? 'high' : z > 2 ? 'medium' : 'low' };
+}
+async function analyzeAudio(arrayBuffer) {
+  const sr = 22050;
+  const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const oc = new OC(1, sr * 40, sr);
+  const buf = await new Promise((res, rej) => { const p = oc.decodeAudioData(arrayBuffer, res, rej); if (p && p.then) p.then(res, rej); });
+  // mix to mono
+  const n = buf.length, x = new Float32Array(n);
+  for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) x[i] += d[i] / buf.numberOfChannels; }
+  const rate = buf.sampleRate;
+  return estimateTempo(x, rate);
+}
+
+// ---------- song search (Apple Music + GetSongBPM via proxy) ----------
 const PROXY_URL='https://steady-bpm.ryo-private-mail.workers.dev/';
 const qA=$('qArtist'),qT=$('qTitle'),sr=$('searchResult');
 qA.value=store.get('steady.qA','');qT.value=store.get('steady.qT','');
@@ -255,21 +363,73 @@ function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className
 function useBtn(bpm,label){const b=el('button','use',label||'このBPMを使う');b.type='button';
   b.onclick=()=>{setBpm(bpm);sr.querySelectorAll('.use').forEach(x=>x.disabled=false);b.disabled=true;
     $('tapBpmInfo').textContent=S.bpm+' BPMにしました。曲に合わせて叩くと確認できます';};return b}
-function showSongs(songs){
+function bpmChoices(bpm){const box=el('div','alts');box.appendChild(useBtn(bpm,'使う'));
+  if(bpm*2<=240)box.appendChild(useBtn(Math.round(bpm*20)/10,'倍 '+Math.round(bpm*2)));
+  if(bpm/2>=40)box.appendChild(useBtn(Math.round(bpm*5)/10,'半分 '+Math.round(bpm/2)));return box}
+let previewAudio=null;
+function trackRow(t,auto){
+  const row=el('div','track');
+  if(t.art){const img=el('img');img.src=t.art;img.alt='';img.width=44;img.height=44;img.loading='lazy';row.appendChild(img)}
+  const mid=el('div','tmid');
+  mid.appendChild(el('div','ttl',t.title));
+  mid.appendChild(el('div','note',t.artist+(t.artistEn&&t.artistEn!==t.artist?'（'+t.artistEn+'）':'')));
+  const out=el('div','tout');mid.appendChild(out);
+  row.appendChild(mid);
+  const btns=el('div','tbtns');
+  const play=el('button','use','▶ 試聴');play.type='button';
+  play.onclick=()=>{
+    if(previewAudio&&previewAudio._id===t.id&&!previewAudio.paused){previewAudio.pause();play.textContent='▶ 試聴';return}
+    if(previewAudio){previewAudio.pause();sr.querySelectorAll('.tbtns .use:first-child').forEach(x=>x.textContent='▶ 試聴')}
+    previewAudio=new Audio(PROXY_URL+'preview?id='+t.id);previewAudio._id=t.id;
+    previewAudio.play().then(()=>{play.textContent='■ 停止'}).catch(()=>{out.textContent='再生できませんでした'});
+    previewAudio.onended=()=>{play.textContent='▶ 試聴'};
+  };
+  const meas=el('button','use','BPMを測る');meas.type='button';
+  const run=async()=>{
+    meas.disabled=true;out.textContent='試聴音源を解析中…（数秒かかります）';
+    try{
+      const r=await fetch(PROXY_URL+'preview?id='+t.id);if(!r.ok)throw new Error(r.status);
+      const res=await analyzeAudio(await r.arrayBuffer());
+      if(!res)throw new Error('short');
+      out.innerHTML='';
+      const line=el('div','row');
+      const big=el('span','big',String(res.bpm));big.appendChild(el('span','note',' BPM'));line.appendChild(big);
+      line.appendChild(el('span','conf',{high:'確度：高',medium:'確度：中',low:'確度：低'}[res.confidence]));
+      out.appendChild(line);out.appendChild(bpmChoices(res.bpm));
+    }catch(err){out.textContent='解析できませんでした。もう一度押すか、タップで測ってください。'}
+    finally{meas.disabled=false}
+  };
+  meas.onclick=run;
+  btns.appendChild(play);btns.appendChild(meas);row.appendChild(btns);
+  if(auto)run();
+  return row;
+}
+function showSongs(d){
+  const songs=(d.songs||[]).filter(s=>s.tempo>=30&&s.tempo<=300), tracks=d.tracks||[];
   sr.hidden=false;sr.innerHTML='';
-  if(!songs.length){sr.appendChild(el('div',null,'見つかりませんでした。英語表記やつづりを変えるか、「Webで調べる」・下のタップで測ってください。'));return}
-  if(qA.value.trim()&&!songs.some(s=>s.match))sr.appendChild(el('div','note','アーティスト名が一致する曲は見つからなかったので、同じ曲名の結果を出しています（データベース上の名義が違うこともあります）。'));
-  songs.slice(0,6).forEach(s=>{
-    const row=el('div','row song');
-    const left=el('div');
-    const t=el('div',null,s.title||'');if(s.match)t.appendChild(el('span','conf',' 一致'));left.appendChild(t);
-    left.appendChild(el('div','note',[s.artist,s.time_sig?s.time_sig+'拍子':''].filter(Boolean).join(' ・ ')));
-    const right=el('div','pick');
-    const big=el('span','big',String(s.tempo));right.appendChild(big);right.appendChild(el('span','note',' BPM'));
-    right.appendChild(useBtn(s.tempo,'使う'));
-    row.appendChild(left);row.appendChild(right);sr.appendChild(row);
-  });
-  sr.appendChild(el('div','note','倍・半分で数える曲もあります。曲に合わせて叩いて確かめてください。'));
+  if(!songs.length&&!tracks.length){sr.appendChild(el('div',null,'見つかりませんでした。つづりを変えるか、「Webで調べる」・下のタップで測ってください。'));return}
+  if(tracks.length){
+    sr.appendChild(el('div','sect','試聴音源から測る'));
+    tracks.slice(0,3).forEach((t,i)=>sr.appendChild(trackRow(t,i===0)));
+    sr.appendChild(el('div','note','30秒の試聴を聴いてBPMを計算します。倍・半分の値が出ることがあるので、試聴に合わせて叩いて確かめてください。'));
+  }
+  sr.appendChild(el('div','sect','データベース（GetSongBPM）'));
+  const matched=songs.filter(s=>s.match);
+  const list=matched.length?matched:songs;
+  if(!list.length){sr.appendChild(el('div','note','この曲はデータベースにありませんでした。'))}
+  else{
+    if(qA.value.trim()&&!matched.length)sr.appendChild(el('div','note','アーティスト名が一致する曲はなかったので、同じ曲名の結果を出しています。'));
+    list.slice(0,matched.length?3:4).forEach(s=>{
+      const row=el('div','row song');
+      const left=el('div');
+      const t=el('div',null,s.title||'');if(s.match)t.appendChild(el('span','conf',' 一致'));left.appendChild(t);
+      left.appendChild(el('div','note',[s.artist,s.time_sig?s.time_sig+'拍子':''].filter(Boolean).join(' ・ ')));
+      const right=el('div','pick');
+      const big=el('span','big',String(s.tempo));right.appendChild(big);right.appendChild(el('span','note',' BPM'));
+      right.appendChild(useBtn(s.tempo,'使う'));
+      row.appendChild(left);row.appendChild(right);sr.appendChild(row);
+    });
+  }
 }
 $('searchForm').addEventListener('submit',async e=>{
   e.preventDefault();
@@ -282,7 +442,7 @@ $('searchForm').addEventListener('submit',async e=>{
     const r=await fetch(PROXY_URL+'?artist='+encodeURIComponent(a)+'&title='+encodeURIComponent(t));
     const d=await r.json();
     if(!r.ok)throw new Error(d.error||r.status);
-    showSongs((d.songs||[]).filter(s=>s.tempo>=30&&s.tempo<=300));
+    showSongs(d);
   }catch(err){sr.textContent='うまく調べられませんでした。時間をおいてもう一度試すか、「Webで調べる」から確認してください。'}
   finally{$('askBtn').disabled=false}
 });
