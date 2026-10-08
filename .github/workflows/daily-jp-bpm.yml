@@ -1,0 +1,41 @@
+name: Daily Japanese BPM update
+
+on:
+  schedule:
+    - cron: '0 18 * * *'   # every day 03:00 JST
+  workflow_dispatch:
+    inputs:
+      max_new:
+        description: 'Songs to analyse this run'
+        default: '60'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-jp-bpm
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Analyse new Japanese songs
+        env:
+          MAX_NEW: ${{ github.event.inputs.max_new || '60' }}
+        run: node tools/update-jp-bpm.mjs
+      - name: Commit the new data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/bpm-jp.json
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git commit -m "Add Japanese song BPMs ($(date -u +%Y-%m-%d))"
+          git push

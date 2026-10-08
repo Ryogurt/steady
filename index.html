@@ -1,6 +1,6 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="description" content="メトロノームや曲に合わせてタップし、リズムのズレを測るリズムキープ練習アプリ">
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}html{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation}body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}input,textarea{-webkit-user-select:text;user-select:text}</style>
 </head><body>
 <title>Steady リズムキープ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -43,14 +43,14 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 input[type=range]{width:100%;accent-color:var(--brass);margin:12px 0 4px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:12px}
 .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
-select{width:100%;font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}
+select{width:100%;font:inherit;font-size:16px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:10px;background:var(--surface-2);margin-bottom:14px}
 .seg button{border:none;background:none;padding:8px;border-radius:7px;font-weight:700;font-size:14px;color:var(--muted)}
 .seg button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
 .songbox{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
 .tapbpm{width:100%;padding:14px;border-radius:12px;border:1px dashed var(--brass);background:var(--brass-soft);color:var(--ink);font-weight:700;display:flex;flex-direction:column;gap:2px;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .search{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.search input{width:100%;font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}
+.search input{width:100%;font:inherit;font-size:16px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}
 .searchbtns{grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .ask{padding:9px 16px;border-radius:9px;border:none;background:var(--ink);color:var(--surface);font-weight:700}
 .ask:disabled{opacity:.5}
@@ -72,6 +72,11 @@ select{width:100%;font:inherit;padding:8px 10px;border-radius:8px;border:1px sol
 .track .tbtns{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}
 .track .tout{margin-top:6px;display:flex;flex-direction:column;gap:6px}
 .alts{display:flex;gap:6px;flex-wrap:wrap}
+.check{grid-column:1/-1;display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:10px;background:var(--surface)}
+.checktap{height:96px;border-radius:14px;border:2px solid var(--brass);background:var(--brass-soft);color:var(--ink);font-weight:700;font-size:18px;touch-action:none;-webkit-user-select:none;user-select:none}
+.checktap.hit{background:var(--surface-2)}
+.checkres{display:flex;flex-direction:column;gap:6px}
+.okmsg{color:var(--good);font-weight:700;font-size:13px}
 .tapbpm.hit{background:var(--surface-2)}
 .tapbpm small{font-weight:400;font-size:12px;color:var(--muted)}
 .calib{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted);flex-wrap:wrap}
@@ -90,7 +95,7 @@ select{width:100%;font:inherit;padding:8px 10px;border-radius:8px;border:1px sol
 .meter .lbl{position:absolute;bottom:3px;font-size:11px;color:var(--muted)}
 .meter .tick{position:absolute;top:6px;width:4px;height:22px;margin-left:-2px;border-radius:2px;transition:opacity 1.2s}
 .readout{text-align:center;font-family:var(--f-mono);font-size:22px;font-weight:600;min-height:34px}
-.pad{width:100%;aspect-ratio:16/10;max-height:280px;border-radius:18px;border:2px solid var(--line);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:background .05s}
+.pad{width:100%;aspect-ratio:16/10;max-height:280px;border-radius:18px;border:2px solid var(--line);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:background .05s}
 .pad b{font-family:var(--f-display);font-weight:400;font-size:26px}
 .pad small{color:var(--muted);font-size:12px}
 .pad.hit{background:var(--brass-soft)}
@@ -204,17 +209,18 @@ canvas{width:100%;height:190px;display:block;margin-top:14px}
   <p class="note">判定：±25ms以内 Perfect / ±50ms Great / ±90ms Good。初めて使う端末では「遅延補正」を一度やると点数が正確になります。イヤホン（特にBluetooth）を使うときは、その状態で補正してください。</p>
 </div>
 
+<script src="tempo.js"></script>
 <script>
 (()=>{
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
-let ctx=null, run=null, calibMs=store.get('steady.calib',null), wake=null;
+let ctx=null, run=null, calibMs=store.get('steady.calib2',null), wake=null;
 const S={bpm:store.get('steady.bpm',100)};
 
 // ---------- settings UI ----------
-function setBpm(v){S.bpm=Math.max(40,Math.min(240,Math.round(v*10)/10));$('bpm').value=S.bpm;$('bpmView').firstChild.nodeValue=Number.isInteger(S.bpm)?S.bpm:S.bpm.toFixed(1);store.set('steady.bpm',S.bpm)}
-$('bpm').addEventListener('input',e=>setBpm(+e.target.value));$('bpm').step='0.1';
+function setBpm(v){S.bpm=Math.max(40,Math.min(240,Math.round(v)));$('bpm').value=S.bpm;$('bpmView').firstChild.nodeValue=S.bpm;store.set('steady.bpm',S.bpm)}
+$('bpm').addEventListener('input',e=>setBpm(+e.target.value));
 $('minus').onclick=()=>setBpm(S.bpm-1);$('plus').onclick=()=>setBpm(S.bpm+1);
 setBpm(S.bpm);
 function showCalib(){$('calibView').textContent=calibMs==null?'未設定':(calibMs>=0?'+':'')+calibMs.toFixed(0)+' ms'}
@@ -248,99 +254,12 @@ $('tapBpm').addEventListener('pointerdown',e=>{
     const n=tb.length,xm=(n-1)/2,ym=tb.reduce((s,v)=>s+v,0)/n;
     let num=0,den=0;tb.forEach((v,i)=>{num+=(i-xm)*(v-ym);den+=(i-xm)**2});
     const b=60000/(num/den);setBpm(b);
-    $('tapBpmInfo').textContent=S.bpm.toFixed(1)+' BPM（'+n+'回）'+(n<12?' ・ もう少し叩くと正確になります':' ・ OK');
+    $('tapBpmInfo').textContent=S.bpm+' BPM（'+n+'回）'+(n<12?' ・ もう少し叩くと正確になります':' ・ OK');
   }else $('tapBpmInfo').textContent=tb.length+'回目…';
 });
 
-// ---------- tempo estimation from audio (spectral flux + comb-filtered autocorrelation) ----------
-function fftMag(re, im) {
-  const n = re.length;
-  for (let i = 1, j = 0; i < n; i++) {
-    let bit = n >> 1;
-    for (; j & bit; bit >>= 1) j ^= bit;
-    j ^= bit;
-    if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
-  }
-  for (let len = 2; len <= n; len <<= 1) {
-    const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
-    for (let i = 0; i < n; i += len) {
-      let cr = 1, ci = 0;
-      for (let j = 0; j < len / 2; j++) {
-        const a = i + j, b = a + len / 2;
-        const tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr;
-        re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
-        const nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr;
-      }
-    }
-  }
-}
-function estimateTempo(x, sr) {
-  const N = 1024, hop = 128, half = N / 2;
-  const frames = Math.floor((x.length - N) / hop);
-  if (frames < 200) return null;
-  const win = new Float32Array(N);
-  for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / N);
-  const re = new Float64Array(N), im = new Float64Array(N);
-  let prev = new Float32Array(half), cur = new Float32Array(half);
-  const flux = new Float32Array(frames);
-  const maxBin = Math.min(half, Math.floor(8000 / (sr / N)));
-  for (let f = 0; f < frames; f++) {
-    const o = f * hop;
-    for (let i = 0; i < N; i++) { re[i] = x[o + i] * win[i]; im[i] = 0; }
-    fftMag(re, im);
-    let s = 0;
-    for (let k = 1; k < maxBin; k++) {
-      const m = Math.log1p(100 * Math.hypot(re[k], im[k]));
-      cur[k] = m;
-      const d = m - prev[k];
-      if (d > 0 && f > 0) s += d;
-    }
-    flux[f] = s;
-    const t = prev; prev = cur; cur = t;
-  }
-  // remove slow trend, keep the rises
-  const fr = sr / hop, w = Math.round(fr * 0.4);
-  const env = new Float32Array(frames);
-  let acc = 0;
-  for (let f = 0; f < frames; f++) {
-    acc += flux[f]; if (f >= w) acc -= flux[f - w];
-    const avg = acc / Math.min(f + 1, w);
-    env[f] = Math.max(0, flux[f] - avg);
-  }
-  // autocorrelation up to 4 beats at the slowest tempo
-  const minBpm = 50, maxBpm = 220;
-  const maxLag = Math.min(frames - 1, Math.ceil(fr * 60 / minBpm * 8) + 2);
-  const ac = new Float64Array(maxLag + 1);
-  for (let L = 0; L <= maxLag; L++) {
-    let s = 0;
-    for (let f = L; f < frames; f++) s += env[f] * env[f - L];
-    ac[L] = s / (frames - L);
-  }
-  const a0 = ac[0] || 1;
-  for (let L = 0; L <= maxLag; L++) ac[L] /= a0;
-  const at = (l) => { if (l >= maxLag) return 0; const i = Math.floor(l), t = l - i; return ac[i] * (1 - t) + ac[i + 1] * t; };
-  const comb = (bpm, K) => { const lag = fr * 60 / bpm; let s = 0; for (let k = 1; k <= K; k++) s += at(lag * k); return s / K; };
-  // coarse scan with a tempo prior centred on 120 BPM
-  let best = 0, bestScore = -1;
-  const scores = [];
-  for (let b = minBpm; b <= maxBpm; b += 0.1) {
-    const sc = comb(b, 4);
-    scores.push(sc);
-    const p = Math.exp(-0.5 * Math.pow(Math.log2(b / 120) / 0.9, 2));
-    if (sc * p > bestScore) { bestScore = sc * p; best = b; }
-  }
-  // fine tune with more multiples (sharper peak)
-  let fine = best, fineScore = -1;
-  for (let b = best - 1.5; b <= best + 1.5; b += 0.01) {
-    const sc = comb(b, 8);
-    if (sc > fineScore) { fineScore = sc; fine = b; }
-  }
-  const mean = scores.reduce((s, v) => s + v, 0) / scores.length;
-  const sd = Math.sqrt(scores.reduce((s, v) => s + (v - mean) ** 2, 0) / scores.length) || 1;
-  const z = (comb(best, 4) - mean) / sd;
-  const rounded = Math.abs(fine - Math.round(fine)) < 0.25 ? Math.round(fine) : Math.round(fine * 10) / 10;
-  return { bpm: rounded, raw: fine, confidence: z > 3 ? 'high' : z > 2 ? 'medium' : 'low' };
-}
+// ---------- tempo estimation (tempo.js) ----------
+const estimateTempo=(x,sr)=>window.SteadyTempo.estimateTempo(x,sr);
 async function analyzeAudio(arrayBuffer) {
   const sr = 22050;
   const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
@@ -360,12 +279,12 @@ qA.value=store.get('steady.qA','');qT.value=store.get('steady.qT','');
 function updWebLink(){$('webLink').href='https://www.google.com/search?q='+encodeURIComponent((qA.value+' '+qT.value).trim()+' BPM')}
 [qA,qT].forEach(el=>el.addEventListener('input',updWebLink));updWebLink();
 function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
-function useBtn(bpm,label){const b=el('button','use',label||'このBPMを使う');b.type='button';
+function useBtn(bpm,label){bpm=Math.round(bpm);const b=el('button','use',label||'このBPMを使う');b.type='button';
   b.onclick=()=>{setBpm(bpm);sr.querySelectorAll('.use').forEach(x=>x.disabled=false);b.disabled=true;
     $('tapBpmInfo').textContent=S.bpm+' BPMにしました。曲に合わせて叩くと確認できます';};return b}
-function bpmChoices(bpm){const box=el('div','alts');box.appendChild(useBtn(bpm,'使う'));
-  if(bpm*2<=240)box.appendChild(useBtn(Math.round(bpm*20)/10,'倍 '+Math.round(bpm*2)));
-  if(bpm/2>=40)box.appendChild(useBtn(Math.round(bpm*5)/10,'半分 '+Math.round(bpm/2)));return box}
+function bpmChoices(bpm){bpm=Math.round(bpm);const box=el('div','alts');box.appendChild(useBtn(bpm,'使う'));
+  if(bpm*2<=240)box.appendChild(useBtn(bpm*2,'倍 '+bpm*2));
+  if(bpm/2>=40)box.appendChild(useBtn(Math.round(bpm/2),'半分 '+Math.round(bpm/2)));return box}
 function jsonp(url){return new Promise((res,rej)=>{
   const cb='itcb'+Date.now()+Math.floor(Math.random()*1e6),sc=document.createElement('script');
   const done=()=>{clearTimeout(tm);try{delete window[cb]}catch(e){window[cb]=undefined}sc.remove()};
@@ -387,8 +306,55 @@ async function fetchPreview(t){
   const r=await fetch(PROXY_URL+'preview?src='+encodeURIComponent(t.preview));if(!r.ok)throw new Error(r.status);return r.arrayBuffer();
 }
 const nrm=v=>String(v||'').toLowerCase().normalize('NFKC').replace(/[\s\p{P}\p{S}]/gu,'');
-let previewAudio=null;
-function trackRow(t,auto,dbTempo){
+const near=(x,y)=>{const p=nrm(x),q=nrm(y);if(!p||!q)return false;if(p===q)return true;return Math.min(p.length,q.length)>=3&&(p.includes(q)||q.includes(p))};
+// Steady's own BPM list of Japanese songs (data/bpm-jp.json, grown every day by a GitHub Action)
+let jpData=null;
+async function loadJp(){if(jpData)return jpData;try{const r=await fetch('data/bpm-jp.json',{cache:'no-cache'});jpData=r.ok?await r.json():{songs:[]}}catch(e){jpData={songs:[]}}return jpData}
+function localMatches(a,t,tracks){
+  const ids=new Set(tracks.map(x=>x.id));
+  return ((jpData&&jpData.songs)||[]).filter(s=>ids.has(s.id)||((near(s.title,t)||near(s.titleEn,t))&&(!a||near(s.artist,a)||near(s.artistEn,a)))).slice(0,5);
+}
+// ---- preview playback + "tap along to check" ----
+async function previewBytes(t){if(!t._ab)t._ab=await fetchPreview(t);return t._ab.slice(0)}
+async function decodeFor(t){
+  if(t._decoded)return t._decoded;
+  const ab=await previewBytes(t);
+  t._decoded=await new Promise((res,rej)=>{const p=ctx.decodeAudioData(ab,res,rej);if(p&&p.then)p.then(res,rej)});
+  return t._decoded;
+}
+let pv=null;   // the preview that is playing now
+function tapSlopeBpm(ts){const n=ts.length,xm=(n-1)/2,ym=ts.reduce((s,v)=>s+v,0)/n;let num=0,den=0;ts.forEach((v,i)=>{num+=(i-xm)*(v-ym);den+=(i-xm)**2});return 60000/(num/den)}
+function checkPanel(t){
+  const box=el('div','check');
+  box.appendChild(el('div','note','試聴に合わせて、下のボタンを拍ごとに叩いてください。叩いたテンポと候補のBPMを比べます。'));
+  const tapb=el('button','checktap','ここを叩く');tapb.type='button';
+  const res=el('div','checkres');
+  box.appendChild(tapb);box.appendChild(res);
+  let taps=[];
+  tapb.addEventListener('pointerdown',e=>{
+    e.preventDefault();
+    tapb.classList.add('hit');setTimeout(()=>tapb.classList.remove('hit'),70);
+    const ts=e.timeStamp>0?e.timeStamp:performance.now();
+    if(taps.length&&ts-taps[taps.length-1]>2000)taps=[];
+    taps.push(ts);if(taps.length>16)taps.shift();
+    res.innerHTML='';
+    if(taps.length<4){res.appendChild(el('div','note',taps.length+'回目…（4回以上で表示）'));return}
+    const mine=Math.round(tapSlopeBpm(taps)), cand=t.bpm||S.bpm, r=mine/cand;
+    const line=el('div','row');
+    const big=el('span','big',String(mine));big.appendChild(el('span','note',' BPM（あなた）'));line.appendChild(big);
+    res.appendChild(line);
+    let msg,ok=false;
+    if(Math.abs(r-1)<0.03){msg='候補の '+cand+' BPM と一致しています ✓';ok=true}
+    else if(Math.abs(r-2)<0.08){msg='候補 '+cand+' の倍で叩いています。どちらで数えても練習できます'}
+    else if(Math.abs(r-0.5)<0.03){msg='候補 '+cand+' の半分で叩いています。どちらで数えても練習できます'}
+    else msg='候補の '+cand+' BPM とずれています'+(taps.length<8?'（もう少し叩くと正確になります）':'');
+    res.appendChild(el('div',ok?'okmsg':'note',msg));
+    const alts=el('div','alts');alts.appendChild(useBtn(mine,'叩いたテンポ '+mine+' を使う'));if(!ok)alts.appendChild(useBtn(cand,'候補 '+cand+' を使う'));
+    res.appendChild(alts);
+  });
+  return box;
+}
+function trackRow(t,auto,dbTempo,localSong){
   const row=el('div','track');
   if(t.art){const img=el('img');img.src=t.art;img.alt='';img.width=44;img.height=44;img.loading='lazy';row.appendChild(img)}
   const mid=el('div','tmid');
@@ -397,25 +363,36 @@ function trackRow(t,auto,dbTempo){
   const out=el('div','tout');mid.appendChild(out);
   row.appendChild(mid);
   const btns=el('div','tbtns');
-  const play=el('button','use','▶ 試聴');play.type='button';
-  play.onclick=()=>{
-    if(previewAudio&&previewAudio._id===t.id&&!previewAudio.paused){previewAudio.pause();play.textContent='▶ 試聴';return}
-    if(previewAudio){previewAudio.pause();sr.querySelectorAll('.tbtns .use:first-child').forEach(x=>x.textContent='▶ 試聴')}
-    previewAudio=new Audio(t.preview);previewAudio._id=t.id;
-    previewAudio.play().then(()=>{play.textContent='■ 停止'}).catch(()=>{out.textContent='再生できませんでした'});
-    previewAudio.onended=()=>{play.textContent='▶ 試聴'};
+  const PLAY='▶ 試聴して確かめる';
+  const play=el('button','use',PLAY);play.type='button';
+  let panel=null;
+  play.onclick=async()=>{
+    ensureCtx();   // must happen inside the tap so phones allow sound
+    if(pv&&pv.id===t.id){pv.stop();return}
+    if(pv)pv.stop();
+    play.disabled=true;play.textContent='読み込み中…';
+    try{
+      const buf=await decodeFor(t);
+      const src=ctx.createBufferSource();src.buffer=buf;src.connect(ctx.destination);src.start();
+      if(!panel){panel=checkPanel(t);row.appendChild(panel)}
+      const me={id:t.id,stop(){try{src.stop()}catch(e){}}};
+      src.onended=()=>{if(pv===me)pv=null;play.textContent=PLAY};
+      pv=me;play.textContent='■ 止める';
+    }catch(err){play.textContent=PLAY;out.textContent='試聴を再生できませんでした。通信状況を確かめてもう一度押してください。'}
+    finally{play.disabled=false}
   };
   const meas=el('button','use','BPMを測る');meas.type='button';
   const run=async()=>{
     meas.disabled=true;out.textContent='試聴音源を解析中…（数秒かかります）';
     try{
-      const res=await analyzeAudio(await fetchPreview(t));
+      const res=await analyzeAudio(await previewBytes(t));
       if(!res)throw new Error('short');
       out.innerHTML='';
       // If the database has this song, fix a half/double-time reading to match it
       let fixed='';
-      if(dbTempo){for(const [m,lab] of [[2,'半分'],[0.5,'倍']]){const v=res.bpm*m;if(Math.abs(v-dbTempo)/dbTempo<0.03&&Math.abs(res.bpm-dbTempo)/dbTempo>=0.03){res.bpm=Math.round(v*10)/10;fixed=lab}}}
+      if(dbTempo){for(const [m,lab] of [[2,'半分'],[0.5,'倍']]){const v=res.bpm*m;if(Math.abs(v-dbTempo)/dbTempo<0.03&&Math.abs(res.bpm-dbTempo)/dbTempo>=0.03){res.bpm=v;fixed=lab}}}
       const line=el('div','row');
+      res.bpm=Math.round(res.bpm);t.bpm=res.bpm;
       const big=el('span','big',String(res.bpm));big.appendChild(el('span','note',' BPM'));line.appendChild(big);
       line.appendChild(el('span','conf',{high:'確度：高',medium:'確度：中',low:'確度：低'}[res.confidence]));
       out.appendChild(line);
@@ -426,17 +403,34 @@ function trackRow(t,auto,dbTempo){
   };
   meas.onclick=run;
   btns.appendChild(play);btns.appendChild(meas);row.appendChild(btns);
-  if(auto)run();
+  if(localSong){
+    t.bpm=localSong.bpm;
+    const line=el('div','row');
+    const big=el('span','big',String(localSong.bpm));big.appendChild(el('span','note',' BPM'));line.appendChild(big);
+    line.appendChild(el('span','conf','Steadyのデータ'));
+    out.appendChild(line);out.appendChild(bpmChoices(localSong.bpm));
+  }else if(auto)run();
   return row;
 }
 function showSongs(d){
-  const songs=(d.songs||[]).filter(s=>s.tempo>=30&&s.tempo<=300), tracks=d.tracks||[];
+  const songs=(d.songs||[]).filter(s=>s.tempo>=30&&s.tempo<=300), tracks=d.tracks||[], local=d.local||[];
   sr.hidden=false;sr.innerHTML='';
-  if(!songs.length&&!tracks.length){sr.appendChild(el('div',null,'見つかりませんでした。つづりを変えるか、「Webで調べる」・下のタップで測ってください。'));return}
+  const localById=new Map(local.map(s=>[s.id,s]));
+  const localOnly=local.filter(s=>!tracks.some(t=>t.id===s.id));
+  if(localOnly.length){
+    sr.appendChild(el('div','sect','Steadyのデータ（日本の曲・毎日更新）'));
+    localOnly.forEach(s=>{
+      const row=el('div','row song');
+      const left=el('div');left.appendChild(el('div',null,s.title));left.appendChild(el('div','note',s.artist));
+      const right=el('div','pick');const big=el('span','big',String(s.bpm));right.appendChild(big);right.appendChild(el('span','note',' BPM'));
+      right.appendChild(useBtn(s.bpm,'使う'));row.appendChild(left);row.appendChild(right);sr.appendChild(row);
+    });
+  }
+  if(!songs.length&&!tracks.length&&!localOnly.length){sr.appendChild(el('div',null,'見つかりませんでした。つづりを変えるか、「Webで調べる」・下のタップで測ってください。'));return}
   if(tracks.length){
     sr.appendChild(el('div','sect','試聴音源から測る'));
     const dbHit=songs.find(s=>s.match);
-    tracks.slice(0,3).forEach((t,i)=>sr.appendChild(trackRow(t,i===0,i===0&&dbHit?dbHit.tempo:null)));
+    tracks.slice(0,3).forEach((t,i)=>sr.appendChild(trackRow(t,i===0,i===0&&dbHit?dbHit.tempo:null,localById.get(t.id))));
     sr.appendChild(el('div','note','30秒の試聴を聴いてBPMを計算します。倍・半分の値が出ることがあるので、試聴に合わせて叩いて確かめてください。'));
   }
   sr.appendChild(el('div','sect','データベース（GetSongBPM）'));
@@ -465,9 +459,10 @@ $('searchForm').addEventListener('submit',async e=>{
   if(PROXY_URL.indexOf('__')===0){sr.hidden=false;sr.textContent='検索の準備中です。「Webで調べる」から確認してください。';return}
   $('askBtn').disabled=true;sr.hidden=false;sr.textContent='調べています…';
   try{
+    const jpLoad=loadJp();
     let tracks=[];try{tracks=await findTracks(a,t)}catch(err){tracks=[]}
+    await jpLoad;
     // other spellings from the Apple Music match (only when it is the artist the user meant)
-    const near=(x,y)=>{const p=nrm(x),q=nrm(y);return !!p&&!!q&&(p.includes(q)||q.includes(p))};
     // Apple Music searched with artist + title together, so a result whose title matches is trusted
     // even when the artist is spelled differently (Kenshi Yonezu -> 米津玄師)
     const top=tracks.find(x=>!a||near(x.artist,a)||near(x.artistEn,a))||tracks.find(x=>near(x.title,t)||near(x.titleEn,t));
@@ -475,8 +470,8 @@ $('searchForm').addEventListener('submit',async e=>{
     if(top)tracks=[top].concat(tracks.filter(x=>x!==top));
     let d={songs:[]};
     try{const r=await fetch(PROXY_URL+'?artist='+encodeURIComponent(a)+'&title='+encodeURIComponent(t)+'&aa='+encodeURIComponent(aa.join('\n'))+'&at='+encodeURIComponent(at.join('\n')));
-      d=await r.json();if(!r.ok)throw new Error(d.error||r.status)}catch(err){if(!tracks.length)throw err;d={songs:[]}}
-    d.tracks=tracks;
+      d=await r.json();if(!r.ok)throw new Error(d.error||r.status)}catch(err){if(!tracks.length&&!localMatches(a,t,[]).length)throw err;d={songs:[]}}
+    d.tracks=tracks;d.local=localMatches(a,t,tracks);
     showSongs(d);
   }catch(err){sr.textContent='うまく調べられませんでした。時間をおいてもう一度試すか、「Webで調べる」から確認してください。'}
   finally{$('askBtn').disabled=false}
@@ -496,6 +491,14 @@ function click(t,accent,kind,vol){
   o.connect(g).connect(ctx.destination);o.start(t);o.stop(t+dur+.01);
 }
 const outLat=()=>(ctx.outputLatency||ctx.baseLatency||0);
+// Context time of the sound that is audible at performance time perfTs (output latency included).
+// getOutputTimestamp gives the output-side clock directly; older browsers fall back to an estimate.
+function audibleTime(perfTs){
+  if(perfTs==null)perfTs=performance.now();
+  if(ctx.getOutputTimestamp){const o=ctx.getOutputTimestamp();
+    if(o&&o.performanceTime>0&&o.contextTime>0)return o.contextTime+(perfTs-o.performanceTime)/1000;}
+  return ctx.currentTime-outLat()-(performance.now()-perfTs)/1000;
+}
 const calS=()=>(calibMs||0)/1000;
 
 // ---------- session engine ----------
@@ -505,7 +508,7 @@ function start(opts){
   const bd=60/opts.bpm;
   if(opts.song){
     run={...opts,bd,countIn:0,beats:[],next:0,taps:new Map(),extra:0,aligning:true,align:[],kBase:0,
-      audible:()=>opts.vol>0, beatNo:i=>(run.kBase+i)%opts.per, playAt:i=>run.beats[i]-calS()-outLat()};
+      audible:()=>opts.vol>0, beatNo:i=>(run.kBase+i)%opts.per, playAt:i=>run.beats[i]-calS()};
     $('readout').style.color='';$('readout').textContent='曲の拍に合わせて '+ALIGN+' 回タップ';
   }else{
     const countIn=opts.per,scored=Math.ceil(opts.dur/bd),t0=ctx.currentTime+.35,beats=[];
@@ -532,7 +535,7 @@ function schedule(){
 function frame(){
   if(!run)return;
   if(run.aligning){$('statusText').textContent='合わせ込み：曲の拍に合わせてタップ（'+run.align.length+' / '+ALIGN+'）';$('timer').textContent='';requestAnimationFrame(frame);return}
-  const b=run.beats, now=run.song?ctx.currentTime+calS():ctx.currentTime-outLat();
+  const b=run.beats, now=run.song?audibleTime()+calS():audibleTime();
   const i=Math.floor((now-b[0])/run.bd), cur=i>=0?run.beatNo(i):-1, barStart=i-cur;
   const dots=$('beats').children;
   for(let k=0;k<dots.length;k++){
@@ -578,8 +581,8 @@ function alignGrid(){
 function tap(e){
   $('pad').classList.add('hit');setTimeout(()=>$('pad').classList.remove('hit'),70);
   if(!run)return;
-  const ts=(e&&e.timeStamp)?e.timeStamp:performance.now();
-  const ta=ctx.currentTime-(performance.now()-ts)/1000;
+  const ts=(e&&e.timeStamp>0)?e.timeStamp:performance.now();
+  const ta=audibleTime(ts);   // what was being heard at the moment of the tap
   let idx,dev;
   if(run.song){
     if(run.aligning){
@@ -602,7 +605,7 @@ function tap(e){
     if(idx<0||idx>=run.beats.length)return;
     dev=(ta-run.beats[idx])*1000;
   }else{
-    const heard=ta-outLat();
+    const heard=ta;
     idx=Math.round((heard-run.beats[0])/run.bd);
     if(idx<run.countIn||idx>=run.beats.length)return;
     dev=(heard-run.beats[idx])*1000;
@@ -629,24 +632,40 @@ document.addEventListener('keydown',e=>{if((e.code==='Space'||e.code==='Enter')&
 
 $('go').onclick=()=>{
   if(run){stop();$('readout').style.color='';return}
+  // without calibration every tap carries this phone's touch + speaker delay, so do it first
+  if(calibMs==null&&mode!=='song'){startCalib(true);return}
   start({bpm:S.bpm,per:+$('meter').value,dur:+$('dur').value,mute:mode==='song'?0:+$('mute').value,snd:$('snd').value,
     song:mode==='song',vol:+$('clickVol').value});
   pad.focus({preventScroll:true});
 };
-$('calibBtn').onclick=()=>{
+function startCalib(thenStart){
   if(run)stop();
-  start({bpm:90,per:4,dur:16*60/90,mute:0,snd:$('snd').value,calib:true});
-  $('readout').style.color='';pad.focus({preventScroll:true});
-};
+  start({bpm:90,per:4,dur:20*60/90,mute:0,snd:$('snd').value,calib:true,thenStart});
+  $('readout').style.color='';$('readout').textContent='クリックに合わせて20回タップしてください（遅延補正）';pad.focus({preventScroll:true});
+}
+$('calibBtn').onclick=()=>startCalib(false);
 setMode(mode);
+['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+document.addEventListener('touchmove',e=>{if(e.touches&&e.touches.length>1)e.preventDefault()},{passive:false});
+let lastTouchEnd=0;
+document.addEventListener('touchend',e=>{const n=Date.now();if(n-lastTouchEnd<350&&!e.target.closest('input,select,textarea,button'))e.preventDefault();lastTouchEnd=n},{passive:false});
+document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
+document.addEventListener('wheel',e=>{if(e.ctrlKey)e.preventDefault()},{passive:false});
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','-','=','0',';'].includes(e.key))e.preventDefault()});
+document.addEventListener('selectstart',e=>{if(!e.target.closest||!e.target.closest('input,textarea'))e.preventDefault()});
 
 function finish(){
   const r=run;stop();
   if(r.calib){
-    const v=[...r.taps.values()].sort((a,b)=>a-b);
+    // skip the first bar (people settle in), use the median, refuse very uneven tapping
+    const v=[...r.taps.entries()].filter(([i])=>i>=r.countIn+4).map(([,d])=>d).sort((a,b)=>a-b);
     if(v.length<8){$('readout').textContent='タップが少なすぎました。もう一度どうぞ';return}
-    const m=v[Math.floor(v.length/2)];calibMs=m;store.set('steady.calib',m);showCalib();
-    $('readout').style.color='';$('readout').textContent='補正しました（'+(m>=0?'+':'')+m.toFixed(0)+' ms）';return;
+    const q=p=>v[Math.min(v.length-1,Math.floor(p*v.length))], iqr=q(.75)-q(.25);
+    if(iqr>70){$('readout').textContent='タップのばらつきが大きいので、もう一度補正してください';return}
+    const m=q(.5);calibMs=m;store.set('steady.calib2',m);showCalib();
+    $('readout').style.color='';$('readout').textContent='補正しました（'+(m>=0?'+':'')+m.toFixed(0)+' ms）。スタートで測定できます';
+    if(r.thenStart){setTimeout(()=>$('go').click(),1200)}
+    return;
   }
   const pts=[];
   for(let i=r.countIn;i<r.beats.length;i++){
