@@ -51,7 +51,14 @@ export default {
 
     try {
       let list = await search('song', title);
-      if (!list.length && artist) list = await search('both', `song:${title} artist:${artist}`);
+      if (artist) {
+        const hit = list.some((s) => {
+          const na = norm(s && s.artist && s.artist.name);
+          return na && (na.includes(want) || want.includes(na));
+        });
+        // Popular titles fill the first page with covers; ask with the artist too and merge.
+        if (!hit) list = (await search('both', `song:${title} artist:${artist}`)).concat(list);
+      }
       const seen = new Set();
       const songs = list
         .filter((s) => s && s.tempo)
