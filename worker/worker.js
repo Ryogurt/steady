@@ -2,6 +2,8 @@
 //  GET /?artist=&title=&aa=&at=  -> { songs: [GetSongBPM results] }
 //      aa / at: other spellings of the artist / title (from Apple Music, looked up by the page)
 //  GET /preview?src=<Apple preview URL> -> that 30-second preview audio (for in-browser tempo analysis)
+//  GET /itunes?term=  or  /itunes?ids=&lang=  -> Apple Music search / lookup (backup when the
+//      browser cannot reach Apple directly; Apple rate-limits shared addresses, so it is cached)
 // Keeps the GetSongBPM API key secret (secret variable GETSONGBPM_KEY) and answers the Steady site.
 const ALLOWED_ORIGINS = ['https://ryogurt.github.io'];
 const UA = 'SteadyRhythmApp/1.1 (+https://ryogurt.github.io/steady/)';
@@ -89,6 +91,19 @@ async function handleSearch(url, env, h) {
   return json({ songs }, 200, { ...h, 'Cache-Control': 'public, max-age=3600' });
 }
 
+async function handleItunes(url, h) {
+  const term = (url.searchParams.get('term') || '').slice(0, 200);
+  const ids = (url.searchParams.get('ids') || '').replace(/[^\d,]/g, '').slice(0, 400);
+  const lang = url.searchParams.get('lang') === 'en_us' ? 'en_us' : 'ja_jp';
+  let u;
+  if (ids) u = `https://itunes.apple.com/lookup?id=${ids}&country=JP&lang=${lang}`;
+  else if (term) u = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&country=JP&media=music&entity=song&limit=5&lang=${lang}`;
+  else return json({ error: 'term required' }, 400, h);
+  const r = await fetch(u, { headers: { 'User-Agent': UA, Accept: 'application/json' }, cf: { cacheTtl: 86400, cacheEverything: true } });
+  if (!r.ok) return json({ error: 'apple ' + r.status }, r.status === 429 ? 429 : 502, h);
+  return new Response(await r.text(), { status: 200, headers: { ...h, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=86400' } });
+}
+
 async function handlePreview(url, h) {
   let src;
   try { src = new URL(url.searchParams.get('src') || ''); } catch (e) { return json({ error: 'src required' }, 400, h); }
@@ -110,6 +125,7 @@ export default {
     const url = new URL(request.url);
     try {
       if (url.pathname === '/preview') return await handlePreview(url, h);
+      if (url.pathname === '/itunes') return await handleItunes(url, h);
       if (!env.GETSONGBPM_KEY) return json({ error: 'APIキーが未設定です' }, 500, h);
       return await handleSearch(url, env, h);
     } catch (e) {

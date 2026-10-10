@@ -1,768 +1,362 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="description" content="メトロノームや曲に合わせてタップし、リズムのズレを測るリズムキープ練習アプリ">
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}html{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation}body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}input,textarea{-webkit-user-select:text;user-select:text}</style>
-</head><body>
-<title>Steady リズムキープ</title>
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#15131a">
+<meta name="description" content="メトロノームや好きな曲に合わせてタップし、拍ごとのズレを測るリズムキープ練習アプリ。">
+<title>Steady</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2315131a'/%3E%3Ccircle cx='32' cy='32' r='19' fill='none' stroke='%23efe9df' stroke-width='3' opacity='.35'/%3E%3Ccircle cx='32' cy='13' r='6' fill='%23e9b44c'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Dela+Gothic+One&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..900&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
-/* Layout: one narrow column, like a practice-room device — controls on top, tap pad in the thumb zone, results below */
+/*
+  Steady — a practice room after hours.
+  One memorable thing: the orbit. A ring that turns once per bar; every tap stays on it as a mark,
+  so a run leaves a fingerprint of how you keep time. Everything around it stays quiet.
+*/
 :root{
-  --bg:#eceff3; --surface:#ffffff; --surface-2:#f5f7fa; --ink:#18212c; --muted:#5b6876; --line:#d6dce4;
-  --brass:#a86a12; --brass-soft:#f3e4c8;
-  --early:#2a66cc; --late:#c94a26; --good:#23885b;
-  --f-display:"Dela Gothic One","Zen Kaku Gothic New",system-ui,sans-serif;
-  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --ink:#15131a;        /* stage background, warm violet-black */
+  --panel:#1d1a23;      /* raised surfaces */
+  --panel-2:#26222e;    /* controls on panels */
+  --line:#353040;       /* hairlines, ring track */
+  --paper:#efe9df;      /* text */
+  --muted:#9d96a8;      /* secondary text */
+  --brass:#e9b44c;      /* the pendulum weight: accent, on-beat */
+  --brass-ink:#2a1f08;  /* text on brass */
+  --early:#72c4e6;      /* 走り */
+  --late:#ef7a6d;       /* もたり */
+  --f-num:"Archivo",system-ui,sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic UI",system-ui,sans-serif;
+  --r-s:10px;--r-m:16px;--r-l:26px;
+  --safe-b:env(safe-area-inset-bottom,0px);
+  color-scheme:dark;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#10141a; --surface:#19202a; --surface-2:#212a35; --ink:#e6ebf1; --muted:#95a3b2; --line:#2f3a47;
-  --brass:#e2a74a; --brass-soft:#3a2e1a; --early:#6d9cf0; --late:#ef7f5c; --good:#4cc08a; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#10141a; --surface:#19202a; --surface-2:#212a35; --ink:#e6ebf1; --muted:#95a3b2; --line:#2f3a47;
-  --brass:#e2a74a; --brass-soft:#3a2e1a; --early:#6d9cf0; --late:#ef7f5c; --good:#4cc08a; color-scheme:dark}
-*{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:20px 48px}
-.wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
-header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
-h1{font-family:var(--f-display);font-weight:400;font-size:28px;margin:0;letter-spacing:.02em}
-h1 small{font-family:var(--f-body);font-size:13px;color:var(--muted);margin-left:8px;letter-spacing:0}
-h2{font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--muted);margin:0 0 10px;text-wrap:balance}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
-.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
-button{font:inherit;color:inherit;cursor:pointer}
-button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
-.linkbtn{background:none;border:none;color:var(--brass);font-weight:700;padding:4px 0;font-size:13px}
+*{box-sizing:border-box;margin:0}
+html{background:var(--ink);-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation}
+body{background:var(--ink);color:var(--paper);font-family:var(--f-body);font-size:15px;line-height:1.65;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+  padding:env(safe-area-inset-top,0px) 0 0;min-height:100dvh;overflow-x:hidden}
+input,textarea{-webkit-user-select:text;user-select:text}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;touch-action:manipulation}
+button:disabled{opacity:.45;cursor:default}
+:focus-visible{outline:2px solid var(--brass);outline-offset:3px;border-radius:6px}
+[hidden]{display:none!important}
+img{max-width:100%;display:block}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-variation-settings:"wdth" 125}
 
-/* tempo */
-.tempo{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.bpm{font-family:var(--f-display);font-size:56px;line-height:1;font-variant-numeric:tabular-nums}
-.bpm span{font-family:var(--f-mono);font-size:13px;color:var(--muted);margin-left:6px}
-.step{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);font-size:20px;font-weight:700;flex:none}
-input[type=range]{width:100%;accent-color:var(--brass);margin:12px 0 4px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:12px}
-.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
-select{width:100%;font:inherit;font-size:16px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:10px;background:var(--surface-2);margin-bottom:14px}
-.seg button{border:none;background:none;padding:8px;border-radius:7px;font-weight:700;font-size:14px;color:var(--muted)}
-.seg button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
-.songbox{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
-.tapbpm{width:100%;padding:14px;border-radius:12px;border:1px dashed var(--brass);background:var(--brass-soft);color:var(--ink);font-weight:700;display:flex;flex-direction:column;gap:2px;touch-action:manipulation;user-select:none;-webkit-user-select:none}
-.search{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.search input{width:100%;font:inherit;font-size:16px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}
-.searchbtns{grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.ask{padding:9px 16px;border-radius:9px;border:none;background:var(--ink);color:var(--surface);font-weight:700}
-.ask:disabled{opacity:.5}
-.weblink{color:var(--brass);font-weight:700;font-size:13px;text-decoration:none}
-.result{grid-column:1/-1;background:var(--surface-2);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;font-size:13px}
-.result .row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.result .big{font-family:var(--f-display);font-size:28px;line-height:1}
-.result .use{padding:7px 12px;border-radius:8px;border:1px solid var(--brass);background:var(--surface);color:var(--brass);font-weight:700;font-size:13px}
-.result .alts{display:flex;gap:6px;flex-wrap:wrap}
-.conf{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--surface);color:var(--muted)}
-@media (max-width:420px){.search{grid-template-columns:1fr}}
-.credit{grid-column:1/-1}.credit a{color:var(--brass)}
-.result .song{border-bottom:1px solid var(--line);padding-bottom:8px}
-.result .pick{display:flex;align-items:baseline;gap:8px}
-.sect{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-top:4px}
-.track{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:start;border-bottom:1px solid var(--line);padding-bottom:10px}
-.track img{border-radius:6px;grid-row:span 2}
-.track .tmid{min-width:0}.track .ttl{font-weight:700;overflow-wrap:anywhere}
-.track .tbtns{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}
-.track .tout{margin-top:6px;display:flex;flex-direction:column;gap:6px}
-.alts{display:flex;gap:6px;flex-wrap:wrap}
-.check{grid-column:1/-1;display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:10px;background:var(--surface)}
-.checktap{height:96px;border-radius:14px;border:2px solid var(--brass);background:var(--brass-soft);color:var(--ink);font-weight:700;font-size:18px;touch-action:none;-webkit-user-select:none;user-select:none}
-.checktap.hit{background:var(--surface-2)}
-.checkres{display:flex;flex-direction:column;gap:6px}
-.okmsg{color:var(--good);font-weight:700;font-size:13px}
-.tapbpm.hit{background:var(--surface-2)}
-.tapbpm small{font-weight:400;font-size:12px;color:var(--muted)}
-.calib{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted);flex-wrap:wrap}
+.app{max-width:460px;margin:0 auto;padding:0 18px calc(110px + var(--safe-b))}
 
-/* stage */
-.stage{display:flex;flex-direction:column;gap:12px}
-.status{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);gap:8px}
-.beats{display:flex;gap:8px;justify-content:center}
-.beats i{width:14px;height:14px;border-radius:50%;background:var(--line);transition:transform .06s}
-.beats i.on{background:var(--brass);transform:scale(1.35)}
-.beats i.mute{background:transparent;border:2px dashed var(--line)}
-.beats i.mute.on{border-color:var(--brass);background:transparent}
-.meter{position:relative;height:44px;border-radius:8px;background:var(--surface-2);overflow:hidden}
-.meter .zone{position:absolute;top:0;bottom:0;left:calc(50% - 12.5%);width:25%;background:var(--brass-soft)}
-.meter .center{position:absolute;top:0;bottom:0;left:50%;width:2px;margin-left:-1px;background:var(--brass)}
-.meter .lbl{position:absolute;bottom:3px;font-size:11px;color:var(--muted)}
-.meter .tick{position:absolute;top:6px;width:4px;height:22px;margin-left:-2px;border-radius:2px;transition:opacity 1.2s}
-.readout{text-align:center;font-family:var(--f-mono);font-size:22px;font-weight:600;min-height:34px}
-.pad{width:100%;aspect-ratio:16/10;max-height:280px;border-radius:18px;border:2px solid var(--line);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:background .05s}
-.pad b{font-family:var(--f-display);font-weight:400;font-size:26px}
-.pad small{color:var(--muted);font-size:12px}
-.pad.hit{background:var(--brass-soft)}
-.go{width:100%;padding:14px;border-radius:12px;border:none;background:var(--brass);color:var(--surface);font-weight:700;font-size:16px}
-.go.stop{background:var(--surface-2);color:var(--ink);border:1px solid var(--line)}
+/* ---------- top bar ---------- */
+.top{display:flex;align-items:center;justify-content:space-between;padding:14px 0 6px}
+.mark{display:flex;align-items:center;gap:10px;font-family:var(--f-num);font-weight:800;font-variation-settings:"wdth" 125;font-size:20px;letter-spacing:-.01em}
+.mark i{width:22px;height:22px;border-radius:50%;border:2px solid color-mix(in oklab,var(--paper) 35%,transparent);position:relative;display:block}
+.mark i::after{content:"";position:absolute;width:8px;height:8px;border-radius:50%;background:var(--brass);top:-5px;left:5px;animation:mark 2s linear infinite;transform-origin:4px 14px}
+@keyframes mark{to{transform:rotate(360deg)}}
+.calib{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);padding:6px 10px 6px 12px;border-radius:999px;background:var(--panel)}
+.calib b{font-family:var(--f-num);font-weight:600;color:var(--paper);font-variant-numeric:tabular-nums}
+.calib .dot{width:7px;height:7px;border-radius:50%;background:var(--late)}
+.calib.ok .dot{background:var(--brass)}
 
-/* results */
-.scorehead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.score{font-family:var(--f-display);font-size:64px;line-height:1}
-.score span{font-family:var(--f-body);font-size:16px;color:var(--muted);margin-left:4px}
-.chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;padding:2px 8px;border-radius:99px;background:var(--brass-soft);color:var(--brass)}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
-.stat{background:var(--surface-2);border-radius:10px;padding:10px}
-.stat div{font-size:11px;color:var(--muted)}
-.stat b{font-family:var(--f-mono);font-size:17px;font-variant-numeric:tabular-nums}
-.judge{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;font-size:12px}
-.judge span{padding:3px 8px;border-radius:6px;background:var(--surface-2)}
-canvas{width:100%;height:190px;display:block;margin-top:14px}
-.advice{margin:14px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
-.history{list-style:none;margin:0;padding:0;font-size:13px}
-.history li{display:grid;grid-template-columns:1fr auto auto;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
-.history li:last-child{border-bottom:none}
-.note{font-size:12px;color:var(--muted);margin:0}
-@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+/* ---------- mode switch ---------- */
+.modes{display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:999px;background:var(--panel);margin:10px 0 4px;position:relative}
+.modes button{position:relative;z-index:1;padding:9px 0;font-weight:700;font-size:14px;color:var(--muted);transition:color .25s}
+.modes button[aria-selected="true"]{color:var(--brass-ink)}
+.modes .thumb{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:var(--brass);transition:transform .35s cubic-bezier(.3,1.4,.5,1)}
+.modes[data-mode="song"] .thumb{transform:translateX(100%)}
+
+/* ---------- chosen song ---------- */
+.song{display:flex;align-items:center;gap:12px;margin-top:12px;padding:10px;border-radius:var(--r-m);background:var(--panel);text-align:left;width:100%}
+.song .art{width:44px;height:44px;border-radius:8px;background:var(--panel-2);flex:none;object-fit:cover}
+.song .meta{min-width:0;flex:1}
+.song .t{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.song .a{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.song .go{font-size:13px;font-weight:700;color:var(--brass);flex:none;padding:0 6px}
+.song.empty .art{display:grid;place-items:center;color:var(--brass);font-size:20px}
+
+/* ---------- stage: orbit + tempo ---------- */
+.stage{position:relative;margin:8px auto 0;width:min(100%,360px);aspect-ratio:1}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%}
+.center{position:absolute;inset:22%;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;touch-action:none;cursor:ns-resize}
+.center .big{font-family:var(--f-num);font-weight:800;font-variation-settings:"wdth" 125;font-size:clamp(64px,22vw,92px);line-height:.9;letter-spacing:-.03em;font-variant-numeric:tabular-nums;transition:color .2s}
+.center .cap{font-size:12px;color:var(--muted);margin-top:8px;min-height:1.6em}
+.center .cap b{color:var(--paper);font-weight:700}
+.center.running{cursor:default}
+.center .big.early{color:var(--early)}.center .big.late{color:var(--late)}.center .big.just{color:var(--brass)}
+.center .big.small{font-size:clamp(40px,13vw,56px)}
+.nudge{position:absolute;top:50%;width:44px;height:44px;margin-top:-22px;border-radius:50%;display:grid;place-items:center;font-size:22px;color:var(--muted);transition:color .2s,background .2s}
+.nudge:active{background:var(--panel);color:var(--paper)}
+.nudge.minus{left:-6px}.nudge.plus{right:-6px}
+.stage.running .nudge{opacity:0;pointer-events:none}
+
+/* ---------- settings chips ---------- */
+.chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:14px 0 0}
+.chip{display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:999px;background:var(--panel);font-size:13px;color:var(--muted)}
+.chip b{color:var(--paper);font-weight:700}
+.chip.tempo{color:var(--brass)}
+
+/* ---------- tap surface ---------- */
+.pad{position:relative;overflow:hidden;margin-top:18px;height:168px;border-radius:var(--r-l);background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;touch-action:none;width:100%}
+.pad .lbl{font-weight:700;font-size:16px}
+.pad .sub{font-size:12px;color:var(--muted)}
+.pad .ripple{position:absolute;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;border:2px solid var(--brass);pointer-events:none;animation:ripple .55s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes ripple{to{transform:scale(9);opacity:0}}
+.pad.hit{background:var(--panel-2)}
+.meter{position:relative;height:6px;width:min(260px,72%);border-radius:3px;background:var(--line);margin-top:8px}
+.meter::before{content:"";position:absolute;left:calc(50% - 10%);width:20%;top:0;bottom:0;border-radius:3px;background:color-mix(in oklab,var(--brass) 45%,transparent)}
+.meter i{position:absolute;top:-5px;width:4px;height:16px;margin-left:-2px;border-radius:2px;transition:opacity 1.4s ease-out}
+
+/* ---------- start ---------- */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:12px 18px calc(12px + var(--safe-b));background:linear-gradient(to top,var(--ink) 60%,transparent)}
+.dock .in{max-width:460px;margin:0 auto}
+.start{width:100%;height:58px;border-radius:999px;background:var(--brass);color:var(--brass-ink);font-weight:700;font-size:17px;letter-spacing:.02em;transition:transform .15s,background .2s}
+.start:active{transform:scale(.98)}
+.start.stop{background:var(--panel-2);color:var(--paper)}
+
+/* ---------- results ---------- */
+.results{margin-top:40px}
+.rhead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+.score{font-family:var(--f-num);font-weight:900;font-variation-settings:"wdth" 125;font-size:96px;line-height:.82;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.score small{font-family:var(--f-body);font-size:15px;font-weight:500;letter-spacing:0;color:var(--muted);margin-left:6px}
+.verdict{font-size:20px;font-weight:700;margin-top:14px}
+.rmeta{font-size:12px;color:var(--muted);margin-top:4px}
+.sample{font-size:11px;font-weight:700;color:var(--brass-ink);background:var(--brass);padding:3px 9px;border-radius:999px;align-self:flex-start}
+.finger{width:120px;height:120px;flex:none}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin-top:22px;border-radius:var(--r-m);overflow:hidden;background:var(--line)}
+.stat{background:var(--panel);padding:12px 12px 10px}
+.stat .k{font-size:11px;color:var(--muted)}
+.stat .v{font-family:var(--f-num);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums;font-variation-settings:"wdth" 112;white-space:nowrap}
+.stat .v small{font-size:12px;font-weight:500;color:var(--muted);margin-left:2px}
+.judge{display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:18px;background:var(--line)}
+.judge span{display:block;transition:flex-grow .8s cubic-bezier(.2,.8,.2,1)}
+.jlegend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:8px}
+.jlegend b{color:var(--paper);font-family:var(--f-num);font-weight:600;margin-left:4px}
+.jlegend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:1px}
+.timeline{width:100%;height:170px;display:block;margin-top:22px}
+.advice{list-style:none;padding:0;margin-top:20px;display:flex;flex-direction:column;gap:12px}
+.advice li{padding-left:16px;position:relative;font-size:14px;line-height:1.7;max-width:62ch}
+.advice li::before{content:"";position:absolute;left:0;top:.75em;width:6px;height:6px;border-radius:50%;background:var(--brass)}
+.hist{margin-top:40px}
+.hist h2{font-size:15px;font-weight:700;margin-bottom:6px}
+.hist ul{list-style:none;padding:0}
+.hist li{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 0;border-bottom:1px solid var(--line);font-size:13px}
+.hist li .s{font-family:var(--f-num);font-weight:800;font-size:22px;grid-row:span 2;align-self:center;font-variation-settings:"wdth" 125}
+.hist li .d{color:var(--muted);font-size:12px}
+.hist .none{color:var(--muted);font-size:13px;padding:10px 0}
+.foot{margin-top:36px;font-size:12px;color:var(--muted);line-height:1.8}
+.foot a{color:var(--muted)}
+
+/* ---------- sheets ---------- */
+.scrim{position:fixed;inset:0;z-index:40;background:rgba(10,8,14,.6);opacity:0;pointer-events:none;transition:opacity .3s}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;max-height:92dvh;display:flex;flex-direction:column;background:var(--panel);border-radius:var(--r-l) var(--r-l) 0 0;transform:translateY(105%);transition:transform .42s cubic-bezier(.2,.9,.25,1);padding-bottom:var(--safe-b)}
+.sheet.on{transform:none}
+.sheet .in{max-width:460px;width:100%;margin:0 auto;padding:0 18px}
+.sheet header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 8px;max-width:460px;width:100%;margin:0 auto}
+.sheet header h2{font-size:18px;font-weight:700}
+.sheet .grab{width:38px;height:5px;border-radius:3px;background:var(--line);margin:8px auto 0}
+.close{width:36px;height:36px;border-radius:50%;background:var(--panel-2);display:grid;place-items:center;font-size:16px;color:var(--muted)}
+.sheet .body{overflow:auto;-webkit-overflow-scrolling:touch;padding-bottom:28px;overscroll-behavior:contain}
+.group{margin-top:18px}
+.group>.k{font-size:13px;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{padding:10px 14px;border-radius:12px;background:var(--panel-2);font-size:14px;font-weight:500;min-width:58px}
+.seg button[aria-pressed="true"]{background:var(--paper);color:var(--ink);font-weight:700}
+.textbtn{color:var(--brass);font-weight:700;font-size:14px;padding:6px 0}
+
+/* search */
+.field{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.field label{font-size:12px;color:var(--muted)}
+.field input{width:100%;font:inherit;font-size:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--ink);color:var(--paper);outline:none}
+.field input:focus{border-color:var(--brass)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.searchgo{width:100%;margin-top:14px;height:50px;border-radius:999px;background:var(--paper);color:var(--ink);font-weight:700;font-size:15px}
+.status{font-size:13px;color:var(--muted);margin-top:16px;min-height:1.4em}
+.sect{font-size:13px;color:var(--muted);margin:22px 0 6px;display:flex;justify-content:space-between;gap:8px}
+.track{display:grid;grid-template-columns:56px 1fr;gap:4px 14px;padding:14px 0;border-top:1px solid var(--line)}
+.track img,.track .noart{width:56px;height:56px;border-radius:10px;grid-row:span 3;background:var(--panel-2);object-fit:cover}
+.track .t{font-weight:700;line-height:1.4;overflow-wrap:anywhere}
+.track .a{font-size:12px;color:var(--muted)}
+.track .bpmline{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;min-height:28px}
+.track .bpm{font-family:var(--f-num);font-weight:800;font-size:28px;line-height:1;font-variation-settings:"wdth" 125;font-variant-numeric:tabular-nums}
+.track .bpm small{font-size:11px;font-weight:600;color:var(--muted);margin-left:3px}
+.tag{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--panel-2);color:var(--muted)}
+.tag.gold{background:color-mix(in oklab,var(--brass) 20%,transparent);color:var(--brass)}
+.track .acts{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.btn{padding:9px 14px;border-radius:999px;background:var(--panel-2);font-size:13px;font-weight:700}
+.btn.gold{background:var(--brass);color:var(--brass-ink)}
+.btn.ghost{background:none;box-shadow:inset 0 0 0 1px var(--line)}
+.measuring{font-size:12px;color:var(--muted)}
+.check{grid-column:1/-1;margin-top:12px;padding:14px;border-radius:var(--r-m);background:var(--ink)}
+.check p{font-size:12px;color:var(--muted)}
+.checktap{width:100%;height:110px;margin-top:10px;border-radius:var(--r-m);background:var(--panel-2);font-weight:700;font-size:16px;touch-action:none;position:relative;overflow:hidden}
+.checktap.hit{background:color-mix(in oklab,var(--brass) 25%,var(--panel-2))}
+.checkres{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.checkres .mine{font-family:var(--f-num);font-weight:800;font-size:30px;font-variation-settings:"wdth" 125}
+.checkres .mine small{font-family:var(--f-body);font-size:12px;font-weight:500;color:var(--muted);margin-left:6px}
+.okmsg{color:var(--brass);font-weight:700;font-size:13px}
+.dbrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.dbrow .t{font-weight:700;font-size:14px}.dbrow .a{font-size:12px;color:var(--muted)}
+.dbrow .r{display:flex;align-items:center;gap:10px;flex:none}
+.dbrow .bpm{font-family:var(--f-num);font-weight:800;font-size:22px;font-variation-settings:"wdth" 125}
+.tapmeasure{margin-top:26px;padding:16px;border-radius:var(--r-m);background:var(--ink)}
+.tapmeasure h3{font-size:14px;font-weight:700}
+.tapmeasure p{font-size:12px;color:var(--muted);margin-top:2px}
+.credit{font-size:11px;color:var(--muted);margin-top:22px}
+.credit a{color:var(--muted)}
+
+/* calibration intro */
+.intro p{font-size:14px;line-height:1.8;color:var(--paper);max-width:40ch}
+.intro .muted{color:var(--muted);font-size:13px;margin-top:10px}
+.intro .start{margin-top:22px}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:calc(92px + var(--safe-b));z-index:60;transform:translate(-50%,20px);opacity:0;background:var(--paper);color:var(--ink);font-size:13px;font-weight:700;padding:10px 16px;border-radius:999px;transition:opacity .25s,transform .3s;pointer-events:none;max-width:calc(100% - 36px);text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* entrance: one orchestrated moment */
+.app>*{animation:rise .7s cubic-bezier(.2,.8,.2,1) both}
+.app>*:nth-child(2){animation-delay:.05s}.app>*:nth-child(3){animation-delay:.1s}.app>*:nth-child(4){animation-delay:.15s}.app>*:nth-child(5){animation-delay:.2s}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media (min-width:700px){.stage{width:400px}}
 </style>
-
-<div class="wrap">
-  <header>
-    <h1>Steady<small>リズムキープ練習</small></h1>
+</head>
+<body>
+<main class="app" id="app">
+  <header class="top">
+    <div class="mark" aria-label="Steady"><i aria-hidden="true"></i>Steady</div>
+    <button class="calib" id="calibChip" aria-label="遅延補正"><span class="dot"></span><span id="calibText">補正前</span></button>
   </header>
 
-  <section class="panel" aria-label="設定">
-    <div class="seg" role="tablist" aria-label="基準">
-      <button id="modeMetro" role="tab" aria-selected="true">メトロノーム</button>
-      <button id="modeSong" role="tab" aria-selected="false">曲に合わせる</button>
+  <div class="modes" id="modes" role="tablist" aria-label="合わせる相手" data-mode="metro">
+    <span class="thumb" aria-hidden="true"></span>
+    <button id="modeMetro" role="tab" aria-selected="true">メトロノーム</button>
+    <button id="modeSong" role="tab" aria-selected="false">曲に合わせる</button>
+  </div>
+
+  <button class="song empty" id="songCard" hidden>
+    <span class="art" id="songArt" aria-hidden="true">♪</span>
+    <span class="meta"><span class="t" id="songTitle" style="display:block">曲を選ぶ</span><span class="a" id="songArtist" style="display:block">曲名で探してBPMを決めます</span></span>
+    <span class="go">探す</span>
+  </button>
+
+  <section class="stage" id="stage" aria-label="テンポと測定">
+    <canvas id="orbit"></canvas>
+    <div class="center" id="center" aria-live="polite">
+      <div class="big" id="bigNum">100</div>
+      <div class="cap" id="cap">BPM ・ 上下にドラッグで変更</div>
     </div>
-    <div class="songbox" id="songBox" hidden>
-      <p class="note">好きなアプリで曲を流しながら使います。曲を検索するか、下のボタンを曲に合わせて叩いてBPMを決めてください。</p>
-      <form class="search" id="searchForm" autocomplete="off">
-        <div class="field"><label for="qArtist">アーティスト名</label><input id="qArtist" type="text" placeholder="例：Bruno Mars"></div>
-        <div class="field"><label for="qTitle">曲名</label><input id="qTitle" type="text" placeholder="例：Uptown Funk"></div>
-        <div class="searchbtns">
-          <button type="submit" class="ask" id="askBtn">BPMを調べる</button>
-          <a class="weblink" id="webLink" href="https://www.google.com/search?q=BPM" target="_blank" rel="noopener">Webで調べる ↗</a>
-        </div>
-        <div class="result" id="searchResult" hidden></div>
-        <p class="note credit">BPMデータ提供：<a href="https://getsongbpm.com" target="_blank" rel="noopener">GetSongBPM.com</a> ・ 曲情報と試聴：Apple Music</p>
-      </form>
-      <button class="tapbpm" id="tapBpm">ここを曲に合わせて叩く → BPMを測る<small id="tapBpmInfo">4回以上叩くと表示されます</small></button>
-    </div>
-    <div class="tempo">
-      <button class="step" id="minus" aria-label="BPMを下げる">−</button>
-      <div class="bpm" id="bpmView">100<span>BPM</span></div>
-      <button class="step" id="plus" aria-label="BPMを上げる">＋</button>
-    </div>
-    <input type="range" id="bpm" min="40" max="240" value="100" aria-label="BPM">
-    <div class="grid">
-      <div class="field"><label for="meter">拍子</label>
-        <select id="meter"><option value="2">2/4</option><option value="3">3/4</option><option value="4" selected>4/4</option><option value="6">6/8</option></select></div>
-      <div class="field"><label for="dur">測定時間</label>
-        <select id="dur"><option value="30" selected>30秒</option><option value="60">60秒</option><option value="120">2分</option></select></div>
-      <div class="field" id="clickVolField" hidden><label for="clickVol">曲に重ねるクリック</label>
-        <select id="clickVol"><option value="0" selected>鳴らさない</option><option value="0.25">小さく鳴らす</option><option value="1">普通に鳴らす</option></select></div>
-      <div class="field" id="muteField"><label for="mute">クリック</label>
-        <select id="mute"><option value="0" selected>ずっと鳴らす</option><option value="1">1小節鳴る→1小節消える</option><option value="2">2小節鳴る→2小節消える</option><option value="4">4小節鳴る→4小節消える</option></select></div>
-      <div class="field"><label for="snd">音</label>
-        <select id="snd"><option value="click" selected>クリック</option><option value="wood">ウッドブロック</option><option value="beep">電子音</option></select></div>
-    </div>
-    <div class="calib">
-      <span>遅延補正 <b class="mono" id="calibView">未設定</b></span>
-      <button class="linkbtn" id="calibBtn">補正する（約15秒）</button>
-    </div>
+    <button class="nudge minus" id="minus" aria-label="BPMを1下げる">−</button>
+    <button class="nudge plus" id="plus" aria-label="BPMを1上げる">+</button>
   </section>
 
-  <section class="panel stage" aria-label="測定">
-    <div class="status"><span id="statusText">スタートで1小節のカウントのあと測定開始</span><span class="mono" id="timer"></span></div>
-    <div class="beats" id="beats"></div>
-    <div class="meter" aria-hidden="true">
-      <div class="zone"></div><div class="center"></div>
-      <span class="lbl" style="left:6px">← 走り</span><span class="lbl" style="right:6px">もたり →</span>
-      <div id="ticks"></div>
-    </div>
-    <div class="readout" id="readout" aria-live="polite">—</div>
-    <button class="pad" id="pad" aria-label="タップ"><b>TAP</b><small>画面をタップ / スペースキー</small></button>
-    <button class="go" id="go">スタート</button>
-  </section>
+  <div class="chips" id="chips">
+    <button class="chip" data-open="settings"><b id="cMeter">4/4</b></button>
+    <button class="chip" data-open="settings"><b id="cDur">30秒</b></button>
+    <button class="chip" data-open="settings" id="cClickWrap"><span id="cClickK">クリック</span><b id="cClick">ずっと</b></button>
+    <button class="chip tempo" id="tapTempoChip" hidden>叩いてBPMを測る</button>
+  </div>
 
-  <section class="panel" aria-label="結果">
-    <div class="scorehead">
+  <button class="pad" id="pad" aria-label="タップ">
+    <span class="lbl" id="padLbl">ここを叩く</span>
+    <span class="sub" id="padSub">スタートしたら、拍に合わせてタップ</span>
+    <span class="meter" aria-hidden="true" id="meter"></span>
+  </button>
+
+  <section class="results" id="results" aria-label="結果">
+    <div class="rhead">
       <div>
-        <h2>結果 <span class="chip" id="sampleChip">サンプル</span></h2>
-        <div class="score"><span id="scoreNum">--</span><span>点</span></div>
+        <span class="sample" id="sampleTag">サンプル</span>
+        <div class="score num" id="score">--<small>点</small></div>
+        <div class="verdict" id="verdict"></div>
+        <div class="rmeta" id="rmeta"></div>
       </div>
-      <div class="note mono" id="resMeta"></div>
+      <canvas class="finger" id="finger" aria-label="叩いた位置の分布"></canvas>
     </div>
     <div class="stats">
-      <div class="stat"><div>平均のズレ</div><b id="sMean">—</b></div>
-      <div class="stat"><div>ばらつき</div><b id="sSd">—</b></div>
-      <div class="stat"><div>前半→後半</div><b id="sDrift">—</b></div>
+      <div class="stat"><div class="k">平均のズレ</div><div class="v" id="sMean">—</div></div>
+      <div class="stat"><div class="k">ばらつき</div><div class="v" id="sSd">—</div></div>
+      <div class="stat"><div class="k">後半の変化</div><div class="v" id="sDrift">—</div></div>
     </div>
-    <div class="judge" id="judge"></div>
-    <canvas id="chart" aria-label="拍ごとのズレのグラフ"></canvas>
+    <div class="judge" id="judgeBar"></div>
+    <div class="jlegend" id="judgeLegend"></div>
+    <canvas class="timeline" id="timeline" aria-label="拍ごとのズレの推移"></canvas>
     <ul class="advice" id="advice"></ul>
   </section>
 
-  <section class="panel" aria-label="履歴">
+  <section class="hist">
     <h2>最近の記録</h2>
-    <ul class="history" id="history"><li><span class="note">まだ記録がありません</span></li></ul>
+    <ul id="history"><li class="none">測定するとここに残ります</li></ul>
   </section>
 
-  <p class="note">判定：±25ms以内 Perfect / ±50ms Great / ±90ms Good。初めて使う端末では「遅延補正」を一度やると点数が正確になります。イヤホン（特にBluetooth）を使うときは、その状態で補正してください。</p>
-</div>
+  <p class="foot">判定は ±25ms 以内がぴったり、±50ms まで良い、±90ms まで惜しい。イヤホン、とくにBluetoothを使うときは、つないだ状態で遅延補正をやり直してください。<br>BPMデータ：<a href="https://getsongbpm.com" target="_blank" rel="noopener">GetSongBPM.com</a> ・ 曲の情報と試聴：Apple Music</p>
+</main>
 
-<script src="tempo.js"></script>
-<script>
-(()=>{
-const $=id=>document.getElementById(id);
-const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+<div class="dock"><div class="in"><button class="start" id="go">スタート</button></div></div>
 
-let ctx=null, run=null, calibMs=store.get('steady.calib2',null), wake=null;
-const S={bpm:store.get('steady.bpm',100)};
+<div class="scrim" id="scrim"></div>
 
-// ---------- settings UI ----------
-function setBpm(v){S.bpm=Math.max(40,Math.min(240,Math.round(v)));$('bpm').value=S.bpm;$('bpmView').firstChild.nodeValue=S.bpm;store.set('steady.bpm',S.bpm)}
-$('bpm').addEventListener('input',e=>setBpm(+e.target.value));
-$('minus').onclick=()=>setBpm(S.bpm-1);$('plus').onclick=()=>setBpm(S.bpm+1);
-setBpm(S.bpm);
-function showCalib(){$('calibView').textContent=calibMs==null?'未設定':(calibMs>=0?'+':'')+calibMs.toFixed(0)+' ms'}
-showCalib();
-function drawBeatDots(n){$('beats').innerHTML='';for(let i=0;i<n;i++)$('beats').appendChild(document.createElement('i'))}
-drawBeatDots(+$('meter').value);
-$('meter').onchange=()=>drawBeatDots(+$('meter').value);
+<!-- settings -->
+<section class="sheet" id="settings" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+  <div class="grab"></div>
+  <header><h2 id="setTitle">設定</h2><button class="close" data-close aria-label="閉じる">✕</button></header>
+  <div class="body"><div class="in">
+    <div class="group"><div class="k">拍子</div><div class="seg" data-set="per">
+      <button data-v="2">2/4</button><button data-v="3">3/4</button><button data-v="4">4/4</button><button data-v="6">6/8</button></div></div>
+    <div class="group"><div class="k">測定時間</div><div class="seg" data-set="dur">
+      <button data-v="30">30秒</button><button data-v="60">60秒</button><button data-v="120">2分</button></div></div>
+    <div class="group" id="gMute"><div class="k">クリック</div><div class="seg" data-set="mute">
+      <button data-v="0">ずっと鳴らす</button><button data-v="1">1小節ごとに消す</button><button data-v="2">2小節ごと</button><button data-v="4">4小節ごと</button></div></div>
+    <div class="group" id="gVol" hidden><div class="k">曲に重ねるクリック</div><div class="seg" data-set="vol">
+      <button data-v="0">鳴らさない</button><button data-v="0.25">小さく</button><button data-v="1">普通</button></div></div>
+    <div class="group"><div class="k">音</div><div class="seg" data-set="snd">
+      <button data-v="click">クリック</button><button data-v="wood">ウッド</button><button data-v="beep">電子音</button></div></div>
+    <div class="group"><div class="k"><span>遅延補正</span><b class="num" id="calibVal" style="color:var(--paper);font-weight:600">—</b></div>
+      <p style="font-size:13px;color:var(--muted)">画面に触れてから反応するまでの遅れと、音が出るまでの遅れを差し引きます。</p>
+      <button class="textbtn" id="recalib">補正をやり直す</button></div>
+  </div></div>
+</section>
 
-// ---------- mode ----------
-let mode=store.get('steady.mode','metro');
-function idleText(){$('statusText').textContent=mode==='song'?'曲を流してからスタート → 曲の拍に8回タップして合わせる':'スタートで1小節のカウントのあと測定開始'}
-function setMode(m){
-  if(run)stop();
-  mode=m;store.set('steady.mode',m);
-  $('modeMetro').setAttribute('aria-selected',String(m==='metro'));$('modeSong').setAttribute('aria-selected',String(m==='song'));
-  $('songBox').hidden=m!=='song';$('clickVolField').hidden=m!=='song';$('muteField').hidden=m==='song';
-  idleText();
-}
-$('modeMetro').onclick=()=>setMode('metro');$('modeSong').onclick=()=>setMode('song');
+<!-- calibration intro -->
+<section class="sheet" id="intro" role="dialog" aria-modal="true" aria-labelledby="introTitle">
+  <div class="grab"></div>
+  <header><h2 id="introTitle">はじめに、遅れを測ります</h2><button class="close" data-close aria-label="閉じる">✕</button></header>
+  <div class="body"><div class="in intro">
+    <p>スマホは、画面に触れてから反応するまでと、音が出るまでに少し時間がかかります。クリックに合わせて20回叩くと、その遅れを差し引いて正しく採点できます。</p>
+    <p class="muted">この端末で一度だけ。イヤホンを替えたときはやり直してください。</p>
+    <button class="start" id="introGo">補正を始める</button>
+  </div></div>
+</section>
 
-// tap tempo (BPM measuring)
-let tb=[];
-$('tapBpm').addEventListener('pointerdown',e=>{
-  e.preventDefault();
-  const t=e.timeStamp||performance.now();
-  if(tb.length&&t-tb[tb.length-1]>2000)tb=[];
-  tb.push(t);if(tb.length>24)tb.shift();
-  $('tapBpm').classList.add('hit');setTimeout(()=>$('tapBpm').classList.remove('hit'),70);
-  if(tb.length>=4){
-    // least-squares slope = more stable than first/last only
-    const n=tb.length,xm=(n-1)/2,ym=tb.reduce((s,v)=>s+v,0)/n;
-    let num=0,den=0;tb.forEach((v,i)=>{num+=(i-xm)*(v-ym);den+=(i-xm)**2});
-    const b=60000/(num/den);setBpm(b);
-    $('tapBpmInfo').textContent=S.bpm+' BPM（'+n+'回）'+(n<12?' ・ もう少し叩くと正確になります':' ・ OK');
-  }else $('tapBpmInfo').textContent=tb.length+'回目…';
-});
+<!-- song search -->
+<section class="sheet" id="finder" role="dialog" aria-modal="true" aria-labelledby="finderTitle">
+  <div class="grab"></div>
+  <header><h2 id="finderTitle">曲を探す</h2><button class="close" data-close aria-label="閉じる">✕</button></header>
+  <div class="body"><div class="in">
+    <form id="searchForm" autocomplete="off">
+      <div class="row2">
+        <div class="field"><label for="qTitle">曲名</label><input id="qTitle" type="search" enterkeyhint="search" placeholder="夜に駆ける"></div>
+        <div class="field"><label for="qArtist">アーティスト</label><input id="qArtist" type="search" enterkeyhint="search" placeholder="YOASOBI"></div>
+      </div>
+      <button class="searchgo" id="askBtn" type="submit">BPMを調べる</button>
+    </form>
+    <div class="status" id="searchStatus" aria-live="polite"></div>
+    <div id="searchResult"></div>
+    <div class="tapmeasure">
+      <h3>叩いてBPMを測る</h3>
+      <p>見つからない曲は、流しながら下を拍ごとに叩いてください。</p>
+      <button class="checktap" id="tapBpm">ここを叩く</button>
+      <div class="checkres" id="tapBpmRes"></div>
+    </div>
+    <p class="credit">BPMデータ：<a href="https://getsongbpm.com" target="_blank" rel="noopener">GetSongBPM.com</a> ・ 曲の情報と試聴：Apple Music ・ 日本の曲は毎日追加しています</p>
+  </div></div>
+</section>
 
-// ---------- tempo estimation (tempo.js) ----------
-const estimateTempo=(x,sr)=>window.SteadyTempo.estimateTempo(x,sr);
-async function analyzeAudio(arrayBuffer) {
-  const sr = 22050;
-  const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-  const oc = new OC(1, sr * 40, sr);
-  const buf = await new Promise((res, rej) => { const p = oc.decodeAudioData(arrayBuffer, res, rej); if (p && p.then) p.then(res, rej); });
-  // mix to mono
-  const n = buf.length, x = new Float32Array(n);
-  for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) x[i] += d[i] / buf.numberOfChannels; }
-  const rate = buf.sampleRate;
-  return estimateTempo(x, rate);
-}
+<div class="toast" id="toast" role="status"></div>
 
-// ---------- song search (Apple Music + GetSongBPM via proxy) ----------
-const PROXY_URL='https://steady-bpm.ryo-private-mail.workers.dev/';
-const qA=$('qArtist'),qT=$('qTitle'),sr=$('searchResult');
-qA.value=store.get('steady.qA','');qT.value=store.get('steady.qT','');
-function updWebLink(){$('webLink').href='https://www.google.com/search?q='+encodeURIComponent((qA.value+' '+qT.value).trim()+' BPM')}
-[qA,qT].forEach(el=>el.addEventListener('input',updWebLink));updWebLink();
-function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
-function useBtn(bpm,label){bpm=Math.round(bpm);const b=el('button','use',label||'このBPMを使う');b.type='button';
-  b.onclick=()=>{setBpm(bpm);sr.querySelectorAll('.use').forEach(x=>x.disabled=false);b.disabled=true;
-    $('tapBpmInfo').textContent=S.bpm+' BPMにしました。曲に合わせて叩くと確認できます';};return b}
-function bpmChoices(bpm){bpm=Math.round(bpm);const box=el('div','alts');box.appendChild(useBtn(bpm,'使う'));
-  if(bpm*2<=240)box.appendChild(useBtn(bpm*2,'倍 '+bpm*2));
-  if(bpm/2>=40)box.appendChild(useBtn(Math.round(bpm/2),'半分 '+Math.round(bpm/2)));return box}
-function jsonp(url){return new Promise((res,rej)=>{
-  const cb='itcb'+Date.now()+Math.floor(Math.random()*1e6),sc=document.createElement('script');
-  const done=()=>{clearTimeout(tm);try{delete window[cb]}catch(e){window[cb]=undefined}sc.remove()};
-  const tm=setTimeout(()=>{done();rej(new Error('timeout'))},8000);
-  window[cb]=d=>{done();res(d)};sc.onerror=()=>{done();rej(new Error('load'))};
-  sc.src=url+(url.includes('?')?'&':'?')+'callback='+cb;document.head.appendChild(sc)})}
-// Apple Music (Japanese store): find the track, and its English/romanized names
-async function findTracks(artist,title){
-  const term=encodeURIComponent((artist+' '+title).trim());
-  const d=await jsonp('https://itunes.apple.com/search?term='+term+'&country=JP&media=music&entity=song&limit=5&lang=ja_jp');
-  const found=(d.results||[]).filter(t=>t.trackId&&t.previewUrl);
-  let en={};
-  if(found.length){try{const e=await jsonp('https://itunes.apple.com/lookup?id='+found.map(t=>t.trackId).join(',')+'&country=JP&lang=en_us');
-    (e.results||[]).forEach(t=>{if(t.trackId)en[t.trackId]={title:t.trackName||'',artist:t.artistName||''}})}catch(err){}}
-  return found.map(t=>({id:t.trackId,title:t.trackName||'',artist:t.artistName||'',titleEn:(en[t.trackId]||{}).title||'',artistEn:(en[t.trackId]||{}).artist||'',art:t.artworkUrl100||'',preview:t.previewUrl}));
-}
-async function fetchPreview(t){
-  try{const r=await fetch(t.preview);if(r.ok)return await r.arrayBuffer()}catch(e){}
-  const r=await fetch(PROXY_URL+'preview?src='+encodeURIComponent(t.preview));if(!r.ok)throw new Error(r.status);return r.arrayBuffer();
-}
-const nrm=v=>String(v||'').toLowerCase().normalize('NFKC').replace(/[\s\p{P}\p{S}]/gu,'');
-const near=(x,y)=>{const p=nrm(x),q=nrm(y);if(!p||!q)return false;if(p===q)return true;return Math.min(p.length,q.length)>=3&&(p.includes(q)||q.includes(p))};
-// Steady's own BPM list of Japanese songs (data/bpm-jp.json, grown every day by a GitHub Action)
-let jpData=null;
-async function loadJp(){if(jpData)return jpData;try{const r=await fetch('data/bpm-jp.json',{cache:'no-cache'});jpData=r.ok?await r.json():{songs:[]}}catch(e){jpData={songs:[]}}return jpData}
-function localMatches(a,t,tracks){
-  const ids=new Set(tracks.map(x=>x.id));
-  return ((jpData&&jpData.songs)||[]).filter(s=>ids.has(s.id)||((near(s.title,t)||near(s.titleEn,t))&&(!a||near(s.artist,a)||near(s.artistEn,a)))).slice(0,5);
-}
-// ---- preview playback + "tap along to check" ----
-async function previewBytes(t){if(!t._ab)t._ab=await fetchPreview(t);return t._ab.slice(0)}
-async function decodeFor(t){
-  if(t._decoded)return t._decoded;
-  const ab=await previewBytes(t);
-  t._decoded=await new Promise((res,rej)=>{const p=ctx.decodeAudioData(ab,res,rej);if(p&&p.then)p.then(res,rej)});
-  return t._decoded;
-}
-let pv=null;   // the preview that is playing now
-function tapSlopeBpm(ts){const n=ts.length,xm=(n-1)/2,ym=ts.reduce((s,v)=>s+v,0)/n;let num=0,den=0;ts.forEach((v,i)=>{num+=(i-xm)*(v-ym);den+=(i-xm)**2});return 60000/(num/den)}
-function checkPanel(t){
-  const box=el('div','check');
-  box.appendChild(el('div','note','試聴に合わせて、下のボタンを拍ごとに叩いてください。叩いたテンポと候補のBPMを比べます。'));
-  const tapb=el('button','checktap','ここを叩く');tapb.type='button';
-  const res=el('div','checkres');
-  box.appendChild(tapb);box.appendChild(res);
-  let taps=[];
-  tapb.addEventListener('pointerdown',e=>{
-    e.preventDefault();
-    tapb.classList.add('hit');setTimeout(()=>tapb.classList.remove('hit'),70);
-    const ts=e.timeStamp>0?e.timeStamp:performance.now();
-    if(taps.length&&ts-taps[taps.length-1]>2000)taps=[];
-    taps.push(ts);if(taps.length>16)taps.shift();
-    res.innerHTML='';
-    if(taps.length<4){res.appendChild(el('div','note',taps.length+'回目…（4回以上で表示）'));return}
-    const mine=Math.round(tapSlopeBpm(taps)), cand=t.bpm||S.bpm, r=mine/cand;
-    const line=el('div','row');
-    const big=el('span','big',String(mine));big.appendChild(el('span','note',' BPM（あなた）'));line.appendChild(big);
-    res.appendChild(line);
-    let msg,ok=false;
-    if(Math.abs(r-1)<0.03){msg='候補の '+cand+' BPM と一致しています ✓';ok=true}
-    else if(Math.abs(r-2)<0.08){msg='候補 '+cand+' の倍で叩いています。どちらで数えても練習できます'}
-    else if(Math.abs(r-0.5)<0.03){msg='候補 '+cand+' の半分で叩いています。どちらで数えても練習できます'}
-    else msg='候補の '+cand+' BPM とずれています'+(taps.length<8?'（もう少し叩くと正確になります）':'');
-    res.appendChild(el('div',ok?'okmsg':'note',msg));
-    const alts=el('div','alts');alts.appendChild(useBtn(mine,'叩いたテンポ '+mine+' を使う'));if(!ok)alts.appendChild(useBtn(cand,'候補 '+cand+' を使う'));
-    res.appendChild(alts);
-  });
-  return box;
-}
-function trackRow(t,auto,dbTempo,localSong){
-  const row=el('div','track');
-  if(t.art){const img=el('img');img.src=t.art;img.alt='';img.width=44;img.height=44;img.loading='lazy';row.appendChild(img)}
-  const mid=el('div','tmid');
-  mid.appendChild(el('div','ttl',t.title));
-  mid.appendChild(el('div','note',t.artist+(t.artistEn&&t.artistEn!==t.artist?'（'+t.artistEn+'）':'')));
-  const out=el('div','tout');mid.appendChild(out);
-  row.appendChild(mid);
-  const btns=el('div','tbtns');
-  const PLAY='▶ 試聴して確かめる';
-  const play=el('button','use',PLAY);play.type='button';
-  let panel=null;
-  play.onclick=async()=>{
-    ensureCtx();   // must happen inside the tap so phones allow sound
-    if(pv&&pv.id===t.id){pv.stop();return}
-    if(pv)pv.stop();
-    play.disabled=true;play.textContent='読み込み中…';
-    try{
-      const buf=await decodeFor(t);
-      const src=ctx.createBufferSource();src.buffer=buf;src.connect(ctx.destination);src.start();
-      if(!panel){panel=checkPanel(t);row.appendChild(panel)}
-      const me={id:t.id,stop(){try{src.stop()}catch(e){}}};
-      src.onended=()=>{if(pv===me)pv=null;play.textContent=PLAY};
-      pv=me;play.textContent='■ 止める';
-    }catch(err){play.textContent=PLAY;out.textContent='試聴を再生できませんでした。通信状況を確かめてもう一度押してください。'}
-    finally{play.disabled=false}
-  };
-  const meas=el('button','use','BPMを測る');meas.type='button';
-  const run=async()=>{
-    meas.disabled=true;out.textContent='試聴音源を解析中…（数秒かかります）';
-    try{
-      const res=await analyzeAudio(await previewBytes(t));
-      if(!res)throw new Error('short');
-      out.innerHTML='';
-      // If the database has this song, fix a half/double-time reading to match it
-      let fixed='';
-      if(dbTempo){for(const [m,lab] of [[2,'半分'],[0.5,'倍']]){const v=res.bpm*m;if(Math.abs(v-dbTempo)/dbTempo<0.03&&Math.abs(res.bpm-dbTempo)/dbTempo>=0.03){res.bpm=v;fixed=lab}}}
-      const line=el('div','row');
-      res.bpm=Math.round(res.bpm);t.bpm=res.bpm;
-      const big=el('span','big',String(res.bpm));big.appendChild(el('span','note',' BPM'));line.appendChild(big);
-      line.appendChild(el('span','conf',{high:'確度：高',medium:'確度：中',low:'確度：低'}[res.confidence]));
-      out.appendChild(line);
-      if(fixed)out.appendChild(el('div','note','解析では'+fixed+'の値が出たので、データベースの '+dbTempo+' BPM に合わせて直しました。'));
-      out.appendChild(bpmChoices(res.bpm));
-    }catch(err){out.textContent='解析できませんでした。もう一度押すか、タップで測ってください。'}
-    finally{meas.disabled=false}
-  };
-  meas.onclick=run;
-  btns.appendChild(play);btns.appendChild(meas);row.appendChild(btns);
-  if(localSong){
-    t.bpm=localSong.bpm;
-    const line=el('div','row');
-    const big=el('span','big',String(localSong.bpm));big.appendChild(el('span','note',' BPM'));line.appendChild(big);
-    line.appendChild(el('span','conf','Steadyのデータ'));
-    out.appendChild(line);out.appendChild(bpmChoices(localSong.bpm));
-  }else if(auto)run();
-  return row;
-}
-function showSongs(d){
-  const songs=(d.songs||[]).filter(s=>s.tempo>=30&&s.tempo<=300), tracks=d.tracks||[], local=d.local||[];
-  sr.hidden=false;sr.innerHTML='';
-  const localById=new Map(local.map(s=>[s.id,s]));
-  const localOnly=local.filter(s=>!tracks.some(t=>t.id===s.id));
-  if(localOnly.length){
-    sr.appendChild(el('div','sect','Steadyのデータ（日本の曲・毎日更新）'));
-    localOnly.forEach(s=>{
-      const row=el('div','row song');
-      const left=el('div');left.appendChild(el('div',null,s.title));left.appendChild(el('div','note',s.artist));
-      const right=el('div','pick');const big=el('span','big',String(s.bpm));right.appendChild(big);right.appendChild(el('span','note',' BPM'));
-      right.appendChild(useBtn(s.bpm,'使う'));row.appendChild(left);row.appendChild(right);sr.appendChild(row);
-    });
-  }
-  if(!songs.length&&!tracks.length&&!localOnly.length){sr.appendChild(el('div',null,'見つかりませんでした。つづりを変えるか、「Webで調べる」・下のタップで測ってください。'));return}
-  if(tracks.length){
-    sr.appendChild(el('div','sect','試聴音源から測る'));
-    const dbHit=songs.find(s=>s.match);
-    tracks.slice(0,3).forEach((t,i)=>sr.appendChild(trackRow(t,i===0,i===0&&dbHit?dbHit.tempo:null,localById.get(t.id))));
-    sr.appendChild(el('div','note','30秒の試聴を聴いてBPMを計算します。倍・半分の値が出ることがあるので、試聴に合わせて叩いて確かめてください。'));
-  }
-  sr.appendChild(el('div','sect','データベース（GetSongBPM）'));
-  const matched=songs.filter(s=>s.match);
-  const list=matched.length?matched:songs;
-  if(!list.length){sr.appendChild(el('div','note','この曲はデータベースにありませんでした。'))}
-  else{
-    if(qA.value.trim()&&!matched.length)sr.appendChild(el('div','note','アーティスト名が一致する曲はなかったので、同じ曲名の結果を出しています。'));
-    list.slice(0,matched.length?3:4).forEach(s=>{
-      const row=el('div','row song');
-      const left=el('div');
-      const t=el('div',null,s.title||'');if(s.match)t.appendChild(el('span','conf',' 一致'));left.appendChild(t);
-      left.appendChild(el('div','note',[s.artist,s.time_sig?s.time_sig+'拍子':''].filter(Boolean).join(' ・ ')));
-      const right=el('div','pick');
-      const big=el('span','big',String(s.tempo));right.appendChild(big);right.appendChild(el('span','note',' BPM'));
-      right.appendChild(useBtn(s.tempo,'使う'));
-      row.appendChild(left);row.appendChild(right);sr.appendChild(row);
-    });
-  }
-}
-$('searchForm').addEventListener('submit',async e=>{
-  e.preventDefault();
-  const a=qA.value.trim(),t=qT.value.trim();
-  if(!t){sr.hidden=false;sr.textContent='曲名を入れてください。';return}
-  store.set('steady.qA',a);store.set('steady.qT',t);
-  if(PROXY_URL.indexOf('__')===0){sr.hidden=false;sr.textContent='検索の準備中です。「Webで調べる」から確認してください。';return}
-  $('askBtn').disabled=true;sr.hidden=false;sr.textContent='調べています…';
-  try{
-    const jpLoad=loadJp();
-    let tracks=[];try{tracks=await findTracks(a,t)}catch(err){tracks=[]}
-    await jpLoad;
-    // other spellings from the Apple Music match (only when it is the artist the user meant)
-    // Apple Music searched with artist + title together, so a result whose title matches is trusted
-    // even when the artist is spelled differently (Kenshi Yonezu -> 米津玄師)
-    const top=tracks.find(x=>!a||near(x.artist,a)||near(x.artistEn,a))||tracks.find(x=>near(x.title,t)||near(x.titleEn,t));
-    const aa=top?[top.artist,top.artistEn].filter(Boolean):[], at=top?[top.title,top.titleEn].filter(Boolean):[];
-    if(top)tracks=[top].concat(tracks.filter(x=>x!==top));
-    let d={songs:[]};
-    try{const r=await fetch(PROXY_URL+'?artist='+encodeURIComponent(a)+'&title='+encodeURIComponent(t)+'&aa='+encodeURIComponent(aa.join('\n'))+'&at='+encodeURIComponent(at.join('\n')));
-      d=await r.json();if(!r.ok)throw new Error(d.error||r.status)}catch(err){if(!tracks.length&&!localMatches(a,t,[]).length)throw err;d={songs:[]}}
-    d.tracks=tracks;d.local=localMatches(a,t,tracks);
-    showSongs(d);
-  }catch(err){sr.textContent='うまく調べられませんでした。時間をおいてもう一度試すか、「Webで調べる」から確認してください。'}
-  finally{$('askBtn').disabled=false}
-});
-
-// ---------- audio ----------
-function ensureCtx(){if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();if(ctx.state!=='running')ctx.resume();return ctx}
-function click(t,accent,kind,vol){
-  if(vol==null)vol=1;if(vol<=0)return;
-  const o=ctx.createOscillator(),g=ctx.createGain();
-  let f,dur;
-  if(kind==='wood'){o.type='triangle';f=accent?1250:900;dur=.05}
-  else if(kind==='beep'){o.type='square';f=accent?1760:1320;dur=.04}
-  else{o.type='sine';f=accent?2000:1400;dur=.03}
-  o.frequency.setValueAtTime(f,t);
-  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime((kind==='beep'?.25:.8)*vol,t+.002);g.gain.exponentialRampToValueAtTime(.001,t+dur);
-  o.connect(g).connect(ctx.destination);o.start(t);o.stop(t+dur+.01);
-}
-const outLat=()=>(ctx.outputLatency||ctx.baseLatency||0);
-// Context time of the sound that is audible at performance time perfTs (output latency included).
-// getOutputTimestamp gives the output-side clock directly; older browsers fall back to an estimate.
-function audibleTime(perfTs){
-  if(perfTs==null)perfTs=performance.now();
-  if(ctx.getOutputTimestamp){const o=ctx.getOutputTimestamp();
-    if(o&&o.performanceTime>0&&o.contextTime>0)return o.contextTime+(perfTs-o.performanceTime)/1000;}
-  return ctx.currentTime-outLat()-(performance.now()-perfTs)/1000;
-}
-const calS=()=>(calibMs||0)/1000;
-
-// ---------- session engine ----------
-const ALIGN=8;
-function start(opts){
-  ensureCtx();
-  const bd=60/opts.bpm;
-  if(opts.song){
-    run={...opts,bd,countIn:0,beats:[],next:0,taps:new Map(),extra:0,aligning:true,align:[],kBase:0,
-      audible:()=>opts.vol>0, beatNo:i=>(run.kBase+i)%opts.per, playAt:i=>run.beats[i]-calS()};
-    $('readout').style.color='';$('readout').textContent='曲の拍に合わせて '+ALIGN+' 回タップ';
-  }else{
-    const countIn=opts.per,scored=Math.ceil(opts.dur/bd),t0=ctx.currentTime+.35,beats=[];
-    for(let i=0;i<countIn+scored;i++)beats.push(t0+i*bd);
-    const audible=i=>{if(i<countIn||!opts.mute)return true;const bar=Math.floor((i-countIn)/opts.per);return bar%(2*opts.mute)<opts.mute};
-    run={...opts,bd,countIn,beats,audible,next:0,taps:new Map(),extra:0,beatNo:i=>i%opts.per,playAt:i=>run.beats[i]};
-    run.timer=setInterval(schedule,20);schedule();
-    $('readout').textContent='—';
-  }
-  drawBeatDots(opts.per);
-  requestAnimationFrame(frame);
-  $('go').textContent='やめる';$('go').classList.add('stop');
-  $('ticks').innerHTML='';
-  try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(w=>wake=w).catch(()=>{})}catch(e){}
-}
-function schedule(){
-  if(!run||run.aligning)return;
-  while(run.next<run.beats.length&&run.playAt(run.next)<ctx.currentTime+.12){
-    const i=run.next,t=run.playAt(i);
-    if(t>ctx.currentTime&&run.audible(i))click(t,run.beatNo(i)===0,run.snd,run.song?run.vol:1);
-    run.next++;
-  }
-}
-function frame(){
-  if(!run)return;
-  if(run.aligning){$('statusText').textContent='合わせ込み：曲の拍に合わせてタップ（'+run.align.length+' / '+ALIGN+'）';$('timer').textContent='';requestAnimationFrame(frame);return}
-  const b=run.beats, now=run.song?audibleTime()+calS():audibleTime();
-  const i=Math.floor((now-b[0])/run.bd), cur=i>=0?run.beatNo(i):-1, barStart=i-cur;
-  const dots=$('beats').children;
-  for(let k=0;k<dots.length;k++){
-    const idx=barStart+k;
-    dots[k].classList.toggle('on',i>=0&&i<b.length&&k===cur&&now-b[i]<.12);
-    dots[k].classList.toggle('mute',!run.song&&!!run.mute&&i>=0&&idx>=0&&idx<b.length&&!run.audible(idx));
-  }
-  if(run.song){
-    $('statusText').textContent=i<0?'まもなく測定開始…':'測定中（曲に合わせて）';
-  }else if(i<run.countIn){
-    $('statusText').textContent=run.calib?'補正中：クリックに合わせてタップ':'カウント '+(Math.max(0,i)+1)+' / '+run.countIn;
-  }else{
-    const muted=!run.audible(Math.min(i,b.length-1));
-    $('statusText').textContent=run.calib?'補正中：クリックに合わせてタップ':(muted?'クリックなし — 自分でキープ':'測定中');
-  }
-  if(!run.calib&&(run.song?i>=0:i>=run.countIn))$('timer').textContent=Math.max(0,b[b.length-1]-now).toFixed(0)+'秒';
-  if(now>b[b.length-1]+run.bd*.6){finish();return}
-  requestAnimationFrame(frame);
-}
-function stop(){if(!run)return;clearInterval(run.timer);run=null;$('go').textContent='スタート';$('go').classList.remove('stop');
-  idleText();$('timer').textContent='';[...$('beats').children].forEach(d=>d.className='');
-  try{wake&&wake.release()}catch(e){}wake=null}
-
-// Fit the beat grid to the alignment taps: phase from a circular mean, spread as a sanity check
-function alignGrid(){
-  const a=run.align,bd=run.bd,ref=a[0];
-  let sx=0,sy=0;
-  a.forEach(t=>{const x=(t-ref)/bd,f=x-Math.round(x);sx+=Math.cos(2*Math.PI*f);sy+=Math.sin(2*Math.PI*f)});
-  const mf=Math.atan2(sy,sx)/(2*Math.PI), anchor=ref+mf*bd;
-  const res=a.map(t=>{const x=(t-anchor)/bd;return (x-Math.round(x))*bd*1000});
-  const sd=Math.sqrt(res.reduce((s,v)=>s+v*v,0)/res.length);
-  if(sd>Math.max(60,bd*1000*.15))return {ok:false,sd};
-  // tempo the taps imply (for a hint only)
-  const ks=a.map(t=>Math.round((t-anchor)/bd)),km=ks.reduce((s,v)=>s+v,0)/ks.length,tm=a.reduce((s,v)=>s+v,0)/a.length;
-  let num=0,den=0;ks.forEach((k,i)=>{num+=(k-km)*(a[i]-tm);den+=(k-km)**2});
-  const est=den?60/(num/den):run.bpm;
-  const kLast=ks[ks.length-1], k0=kLast+1;
-  run.kBase=((k0-ks[0])%run.per+run.per)%run.per;  // first alignment tap = beat 1
-  run.beats=[];const n=Math.ceil(run.dur/bd);for(let j=0;j<n;j++)run.beats.push(anchor+(k0+j)*bd);
-  return {ok:true,sd,est};
-}
-
-function tap(e){
-  $('pad').classList.add('hit');setTimeout(()=>$('pad').classList.remove('hit'),70);
-  if(!run)return;
-  const ts=(e&&e.timeStamp>0)?e.timeStamp:performance.now();
-  const ta=audibleTime(ts);   // what was being heard at the moment of the tap
-  let idx,dev;
-  if(run.song){
-    if(run.aligning){
-      const a=run.align;
-      if(a.length&&ta-a[a.length-1]>run.bd*2.5)a.length=0;
-      a.push(ta);
-      $('readout').textContent=a.length+' / '+ALIGN;
-      if(a.length>=ALIGN){
-        const r=alignGrid();
-        if(!r.ok){a.length=0;$('readout').textContent='タップが曲のBPMと合いません。BPMを確認して、もう一度 '+ALIGN+' 回';return}
-        run.aligning=false;run.estBpm=r.est;
-        const off=Math.abs(r.est-run.bpm)/run.bpm>.04;
-        $('readout').textContent=off?'合わせました（タップからは約'+r.est.toFixed(0)+' BPM。入力値を確認）':'合わせました。そのままキープ！';
-        run.timer=setInterval(schedule,20);schedule();
-      }
-      return;
-    }
-    if(!run.beats.length)return;
-    idx=Math.round((ta-run.beats[0])/run.bd);
-    if(idx<0||idx>=run.beats.length)return;
-    dev=(ta-run.beats[idx])*1000;
-  }else{
-    const heard=ta;
-    idx=Math.round((heard-run.beats[0])/run.bd);
-    if(idx<run.countIn||idx>=run.beats.length)return;
-    dev=(heard-run.beats[idx])*1000;
-    if(!run.calib&&calibMs!=null)dev-=calibMs;
-  }
-  const prev=run.taps.get(idx);
-  if(prev==null||Math.abs(dev)<Math.abs(prev)){if(prev!=null)run.extra++;run.taps.set(idx,dev)}else run.extra++;
-  if(!run.calib)showTap(dev);
-  else $('readout').textContent=(run.taps.size)+' 回';
-}
-function showTap(dev){
-  const r=$('readout'),a=Math.abs(dev);
-  r.textContent=(dev>=0?'+':'−')+a.toFixed(0)+' ms '+(a<=25?'ジャスト':dev<0?'走り':'もたり');
-  r.style.color=a<=25?'var(--good)':dev<0?'var(--early)':'var(--late)';
-  const t=document.createElement('div');t.className='tick';
-  t.style.left=(50+Math.max(-100,Math.min(100,dev))/2)+'%';
-  t.style.background=a<=25?'var(--good)':dev<0?'var(--early)':'var(--late)';
-  $('ticks').appendChild(t);requestAnimationFrame(()=>requestAnimationFrame(()=>t.style.opacity='0'));
-  setTimeout(()=>t.remove(),1400);
-}
-const pad=$('pad');
-pad.addEventListener('pointerdown',e=>{e.preventDefault();tap(e)});
-document.addEventListener('keydown',e=>{if((e.code==='Space'||e.code==='Enter')&&!e.repeat&&(document.activeElement===pad||document.activeElement===document.body)){e.preventDefault();tap(e)}});
-
-$('go').onclick=()=>{
-  if(run){stop();$('readout').style.color='';return}
-  // without calibration every tap carries this phone's touch + speaker delay, so do it first
-  if(calibMs==null&&mode!=='song'){startCalib(true);return}
-  start({bpm:S.bpm,per:+$('meter').value,dur:+$('dur').value,mute:mode==='song'?0:+$('mute').value,snd:$('snd').value,
-    song:mode==='song',vol:+$('clickVol').value});
-  pad.focus({preventScroll:true});
-};
-function startCalib(thenStart){
-  if(run)stop();
-  start({bpm:90,per:4,dur:20*60/90,mute:0,snd:$('snd').value,calib:true,thenStart});
-  $('readout').style.color='';$('readout').textContent='クリックに合わせて20回タップしてください（遅延補正）';pad.focus({preventScroll:true});
-}
-$('calibBtn').onclick=()=>startCalib(false);
-setMode(mode);
-['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
-document.addEventListener('touchmove',e=>{if(e.touches&&e.touches.length>1)e.preventDefault()},{passive:false});
-let lastTouchEnd=0;
-document.addEventListener('touchend',e=>{const n=Date.now();if(n-lastTouchEnd<350&&!e.target.closest('input,select,textarea,button'))e.preventDefault();lastTouchEnd=n},{passive:false});
-document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
-document.addEventListener('wheel',e=>{if(e.ctrlKey)e.preventDefault()},{passive:false});
-document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','-','=','0',';'].includes(e.key))e.preventDefault()});
-document.addEventListener('selectstart',e=>{if(!e.target.closest||!e.target.closest('input,textarea'))e.preventDefault()});
-
-function finish(){
-  const r=run;stop();
-  if(r.calib){
-    // skip the first bar (people settle in), use the median, refuse very uneven tapping
-    const v=[...r.taps.entries()].filter(([i])=>i>=r.countIn+4).map(([,d])=>d).sort((a,b)=>a-b);
-    if(v.length<8){$('readout').textContent='タップが少なすぎました。もう一度どうぞ';return}
-    const q=p=>v[Math.min(v.length-1,Math.floor(p*v.length))], iqr=q(.75)-q(.25);
-    if(iqr>70){$('readout').textContent='タップのばらつきが大きいので、もう一度補正してください';return}
-    const m=q(.5);calibMs=m;store.set('steady.calib2',m);showCalib();
-    $('readout').style.color='';$('readout').textContent='補正しました（'+(m>=0?'+':'')+m.toFixed(0)+' ms）。スタートで測定できます';
-    if(r.thenStart){setTimeout(()=>$('go').click(),1200)}
-    return;
-  }
-  const pts=[];
-  for(let i=r.countIn;i<r.beats.length;i++){
-    const d=r.taps.get(i);pts.push({t:r.beats[i]-r.beats[r.countIn],dev:d==null?null:d,muted:!r.song&&!r.audible(i)});
-  }
-  const res=analyze(pts,{bpm:r.bpm,dur:r.dur,mute:r.mute,extra:r.extra,song:!!r.song,estBpm:r.estBpm});
-  render(res,false);
-  const h=store.get('steady.hist',[]);h.unshift({at:Date.now(),bpm:r.bpm,dur:r.dur,mute:r.mute,song:!!r.song,score:res.score,mean:res.mean,sd:res.sd});store.set('steady.hist',h.slice(0,10));renderHist();
-  $('scoreNum').closest('.panel').scrollIntoView({behavior:'smooth',block:'start'});
-}
-
-// ---------- analysis ----------
-function analyze(pts,meta){
-  const hit=pts.filter(p=>p.dev!=null&&Math.abs(p.dev)<=150);
-  const n=pts.length, h=hit.length;
-  const mean=h?hit.reduce((s,p)=>s+p.dev,0)/h:0;
-  const sd=h>1?Math.sqrt(hit.reduce((s,p)=>s+(p.dev-mean)**2,0)/(h-1)):0;
-  const half=pts.length?pts[pts.length-1].t/2:0;
-  const avg=a=>a.length?a.reduce((s,p)=>s+p.dev,0)/a.length:0;
-  const first=avg(hit.filter(p=>p.t<half)), second=avg(hit.filter(p=>p.t>=half));
-  const drift=second-first;
-  const J={perfect:0,great:0,good:0,miss:0};
-  pts.forEach(p=>{const a=p.dev==null?999:Math.abs(p.dev);a<=25?J.perfect++:a<=50?J.great++:a<=90?J.good++:J.miss++});
-  const cl=x=>Math.max(0,Math.min(100,x));
-  const stab=cl(100-(sd-8)*1.3), acc=cl(100-(Math.abs(mean)-5)*1.2-Math.max(0,Math.abs(drift)-10)*.6), cov=n?h/n*100:0;
-  const score=h<4?0:Math.round(stab*.5+acc*.3+cov*.2);
-  let mutedInfo=null;
-  if(meta.mute){const m=hit.filter(p=>p.muted),u=hit.filter(p=>!p.muted);if(m.length&&u.length)mutedInfo={on:avg(u),off:avg(m)}}
-  return {pts,mean,sd,drift,J,score,h,n,meta,mutedInfo};
-}
-const sgn=v=>(v>=0?'+':'−')+Math.abs(v).toFixed(0);
-function render(R,sample){
-  $('sampleChip').hidden=!sample;
-  $('scoreNum').textContent=R.score;
-  $('resMeta').textContent=(R.meta.song?'曲 ・ ':'')+R.meta.bpm+' BPM ・ '+R.meta.dur+'秒 ・ '+R.h+'/'+R.n+'拍';
-  $('sMean').textContent=sgn(R.mean)+' ms';$('sMean').style.color=Math.abs(R.mean)<=15?'':R.mean<0?'var(--early)':'var(--late)';
-  $('sSd').textContent='±'+R.sd.toFixed(0)+' ms';
-  $('sDrift').textContent=sgn(R.drift)+' ms';
-  $('judge').innerHTML=`<span>Perfect <b class="mono">${R.J.perfect}</b></span><span>Great <b class="mono">${R.J.great}</b></span><span>Good <b class="mono">${R.J.good}</b></span><span>Miss <b class="mono">${R.J.miss}</b></span>`;
-  const adv=[];
-  if(R.meta.song)adv.push('曲モードでは最初の'+8+'タップの位置を基準にしています。「平均のズレ」は合わせた位置からの差です。BPMの入力が曲とずれていると「前半→後半」も大きくなるので、気になるときはBPMを測り直してください。');
-  if(R.h<4)adv.push('タップが少なくて採点できませんでした。拍ごとにタップしてみてください。');
-  else{
-    if(R.mean<-15)adv.push(`全体的に走り気味です（平均 ${Math.abs(R.mean).toFixed(0)}ms 早い）。拍の「後ろ側」を意識してみましょう。`);
-    else if(R.mean>15)adv.push(`全体的にもたり気味です（平均 ${R.mean.toFixed(0)}ms 遅い）。次の拍を先取りする意識で。`);
-    else adv.push('平均のタイミングはほぼジャストです。');
-    if(R.sd<=20)adv.push(`ばらつき ±${R.sd.toFixed(0)}ms はかなり安定しています。テンポを上げるか、クリックを消す設定で試してみましょう。`);
-    else if(R.sd<=40)adv.push(`ばらつき ±${R.sd.toFixed(0)}ms。拍ごとの揺れがまだあります。少し遅めのBPMで安定させるのがおすすめです。`);
-    else adv.push(`ばらつき ±${R.sd.toFixed(0)}ms は大きめです。BPMを10〜20下げて、まず揃えることを優先しましょう。`);
-    if(Math.abs(R.drift)>20)adv.push(R.drift<0?`後半にかけて ${Math.abs(R.drift).toFixed(0)}ms 前に転んでいます（後半走り）。`:`後半にかけて ${R.drift.toFixed(0)}ms 遅れています（後半もたり）。`);
-    if(R.mutedInfo){const d=R.mutedInfo.off-R.mutedInfo.on;adv.push(`クリックが消えた区間の平均は ${sgn(R.mutedInfo.off)}ms（鳴っている区間 ${sgn(R.mutedInfo.on)}ms）。`+(Math.abs(d)>15?(d<0?'自分だけになると走る傾向があります。':'自分だけになるともたる傾向があります。'):'クリックがなくてもキープできています。'))}
-  }
-  $('advice').innerHTML=adv.map(a=>`<li>${a}</li>`).join('');
-  lastR=R;drawChart(R);
-}
-let lastR=null;
-function drawChart(R){
-  const c=$('chart'),dpr=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;
-  c.width=w*dpr;c.height=h*dpr;const g=c.getContext('2d');g.scale(dpr,dpr);
-  const cs=getComputedStyle(document.documentElement),col=k=>cs.getPropertyValue(k).trim();
-  const L=40,Rr=8,T=8,B=22,pw=w-L-Rr,ph=h-T-B,Y=v=>T+ph/2-(Math.max(-120,Math.min(120,v))/120)*(ph/2);
-  const tMax=Math.max(1,R.pts.length?R.pts[R.pts.length-1].t:1),X=t=>L+t/tMax*pw;
-  g.font='11px '+col('--f-mono');g.textBaseline='middle';
-  // muted bars shading
-  g.fillStyle=col('--surface-2');
-  R.pts.forEach((p,i)=>{if(p.muted){const nx=R.pts[i+1]?X(R.pts[i+1].t):X(p.t)+2;g.fillRect(X(p.t),T,nx-X(p.t),ph)}});
-  g.fillStyle=col('--brass-soft');g.fillRect(L,Y(25),pw,Y(-25)-Y(25));
-  [-100,-50,0,50,100].forEach(v=>{g.strokeStyle=col('--line');g.lineWidth=v===0?1.5:1;g.beginPath();g.moveTo(L,Y(v));g.lineTo(L+pw,Y(v));g.stroke();
-    g.fillStyle=col('--muted');g.textAlign='right';g.fillText((v>0?'+':'')+v,L-6,Y(v))});
-  g.textAlign='center';g.textBaseline='top';g.fillStyle=col('--muted');
-  const stepS=tMax>60?20:tMax>30?10:5;for(let s=0;s<=tMax+.01;s+=stepS)g.fillText(s+'s',X(s),T+ph+6);
-  g.textAlign='left';g.textBaseline='top';g.fillText('早い',L+4,T+2);g.textBaseline='bottom';g.fillText('遅い',L+4,T+ph-2);
-  R.pts.forEach(p=>{
-    if(p.dev==null){g.strokeStyle=col('--muted');g.lineWidth=1.2;const x=X(p.t),y=Y(0);g.beginPath();g.moveTo(x-3,y-3);g.lineTo(x+3,y+3);g.moveTo(x+3,y-3);g.lineTo(x-3,y+3);g.stroke();return}
-    const a=Math.abs(p.dev);g.fillStyle=a<=25?col('--good'):p.dev<0?col('--early'):col('--late');
-    g.beginPath();g.arc(X(p.t),Y(p.dev),3.2,0,7);g.fill();
-  });
-}
-addEventListener('resize',()=>lastR&&drawChart(lastR));
-try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>lastR&&drawChart(lastR))}catch(e){}
-new MutationObserver(()=>lastR&&drawChart(lastR)).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
-
-function renderHist(){
-  const h=store.get('steady.hist',[]);if(!h.length)return;
-  $('history').innerHTML=h.map(x=>{const d=new Date(x.at);return `<li><span>${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} ・ ${x.song?'曲 ・ ':''}${x.bpm} BPM${x.mute?' ・ 消音'+x.mute:''}</span><span class="mono">${sgn(x.mean)}ms ±${x.sd.toFixed(0)}</span><b class="mono">${x.score}点</b></li>`}).join('');
-}
-renderHist();
-
-// ---------- sample result (shown until the first real run) ----------
-(function sample(){
-  let s=7;const rnd=()=>{s=(s*16807)%2147483647;return s/2147483647};
-  const bd=60/100,pts=[];
-  for(let i=0;i<50;i++){const t=i*bd;const muted=Math.floor(i/4)%4>=2;
-    let dev=-8-t*.9+(rnd()+rnd()+rnd()-1.5)*34-(muted?10:0);if(rnd()<.04)dev=null;pts.push({t,dev,muted})}
-  render(analyze(pts,{bpm:100,dur:30,mute:2,extra:0}),true);
-})();
-})();
-</script>
-
-</body></html>
+<script src="tempo.js?v=20261010-2"></script>
+<script src="app.js?v=20261010-2"></script>
+</body>
+</html>
