@@ -5,9 +5,12 @@ on:
     - cron: '0 18 * * *'   # every day 03:00 JST
   workflow_dispatch:
     inputs:
-      max_new:
-        description: 'Songs to analyse this run'
-        default: '60'
+      minutes:
+        description: 'How long to collect (minutes, max 340)'
+        default: '25'
+      commit_every:
+        description: 'Save progress every N new songs (0 = only at the end)'
+        default: '0'
 
 permissions:
   contents: write
@@ -19,7 +22,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -27,15 +30,20 @@ jobs:
           node-version: 22
       - name: Install ffmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
-      - name: Analyse new Japanese songs
-        env:
-          MAX_NEW: ${{ github.event.inputs.max_new || '60' }}
-        run: node tools/update-jp-bpm.mjs
-      - name: Commit the new data
+      - name: Set the commit identity
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Collect Japanese song BPMs
+        env:
+          TIME_LIMIT_MIN: ${{ github.event.inputs.minutes || '25' }}
+          COMMIT_EVERY: ${{ github.event.inputs.commit_every || '0' }}
+        run: node tools/update-jp-bpm.mjs
+      - name: Commit the new data
+        if: always()
+        run: |
           git add data/bpm-jp.json
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
           git commit -m "Add Japanese song BPMs ($(date -u +%Y-%m-%d))"
+          git pull -q --rebase -X theirs origin main
           git push

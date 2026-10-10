@@ -641,6 +641,8 @@ let jpData = null;
 async function loadJp() {
   if (jpData) return jpData;
   try { const r = await fetch('data/bpm-jp.json', { cache: 'no-cache' }); jpData = r.ok ? await r.json() : { songs: [] }; } catch (e) { jpData = { songs: [] }; }
+  // v2 keeps rows compact: [id, title, artist, titleEn, artistEn, bpm, conf, artistId, added]
+  if (jpData.v === 2) jpData.songs = jpData.rows.map((r) => ({ id: r[0], title: r[1], artist: r[2], titleEn: r[3], artistEn: r[4], bpm: r[5], conf: r[6] }));
   return jpData;
 }
 function localMatches(a, t, tracks) {
