@@ -1,7 +1,7 @@
 /* Steady — rhythm-keeping practice. All app logic. */
 (() => {
 'use strict';
-const VERSION = '20261010-3';
+const VERSION = '20261010-4';
 const PROXY_URL = 'https://steady-bpm.ryo-private-mail.workers.dev/';
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -620,7 +620,7 @@ async function findTracks(artist, title) {
     try { const e = await apple('lookup', found.map((t) => t.trackId).join(','), 'en_us'); (e.results || []).forEach((t) => { if (t.trackId) en[t.trackId] = { title: t.trackName || '', artist: t.artistName || '' }; }); } catch (err) {}
   }
   return found.map((t) => ({ id: t.trackId, title: t.trackName || '', artist: t.artistName || '', titleEn: (en[t.trackId] || {}).title || '', artistEn: (en[t.trackId] || {}).artist || '',
-    art: (t.artworkUrl100 || '').replace('100x100bb', '200x200bb'), preview: t.previewUrl }));
+    art: (t.artworkUrl100 || '').replace('100x100bb', '200x200bb'), art100: t.artworkUrl100 || '', preview: t.previewUrl }));
 }
 async function fetchPreview(t) {
   try { const r = await fetch(t.preview); if (r.ok) return await r.arrayBuffer(); } catch (e) {}
@@ -696,12 +696,12 @@ tapAlong($('tapBpm'), $('tapBpmRes'), () => null, (bpm) => chooseSong({ title: '
 
 function trackCard(t, opts) {
   const row = el('div', 'track');
-  if (t.art) { const img = el('img'); img.src = t.art; img.alt = ''; img.loading = 'lazy'; row.appendChild(img); } else row.appendChild(el('div', 'noart'));
+  if (t.art) { const img = el('img'); img.alt = ''; img.decoding = 'async'; img.referrerPolicy = 'no-referrer'; img.onerror = () => { img.onerror = null; if (t.art100 && img.src !== t.art100) img.src = t.art100; }; img.src = t.art; row.appendChild(img); } else row.appendChild(el('div', 'noart'));
   row.appendChild(el('div', 't', t.title));
   row.appendChild(el('div', 'a', t.artist + (t.artistEn && t.artistEn !== t.artist ? '（' + t.artistEn + '）' : '')));
   const line = el('div', 'bpmline'); row.appendChild(line);
   const acts = el('div', 'acts'); row.appendChild(acts);
-  const use = el('button', 'btn gold', 'この曲で練習'); use.type = 'button'; use.disabled = true;
+  const use = el('button', 'btn gold', 'この曲で練習'); use.type = 'button'; use.hidden = true;
   use.onclick = () => chooseSong(Object.assign({}, t, { bpm: t.bpm }));
   const PLAY = '▶ 試聴して確かめる', play = el('button', 'btn', PLAY); play.type = 'button';
   const meas = el('button', 'btn ghost', 'BPMを測る'); meas.type = 'button';
@@ -713,7 +713,7 @@ function trackCard(t, opts) {
     const x2 = el('button', 'tag', '×2'), h2 = el('button', 'tag', '÷2'); x2.type = h2.type = 'button';
     x2.onclick = () => { if (t.bpm * 2 <= 240) showBpm(t.bpm * 2, tagText, gold); }; h2.onclick = () => { if (t.bpm / 2 >= 40) showBpm(t.bpm / 2, tagText, gold); };
     line.append(x2, h2);
-    use.disabled = false; meas.hidden = true;
+    use.hidden = false; meas.hidden = true;
   };
   const measure = async () => {
     meas.disabled = true; line.innerHTML = ''; line.appendChild(el('span', 'measuring', '試聴を解析中…'));
