@@ -89,6 +89,14 @@ async function main() {
   };
   const commit = (msg) => {
     try {
+      // merge what is on GitHub now so nothing added meanwhile is lost
+      try {
+        execFileSync('git', ['fetch', '-q', 'origin', 'main'], { cwd: root });
+        const remote = execFileSync('git', ['show', 'origin/main:data/bpm-jp.json'], { cwd: root, maxBuffer: 256 * 1024 * 1024 }).toString();
+        const d = JSON.parse(remote);
+        (d.v === 2 ? d.rows : []).forEach((r) => { if (!songs.has(r[0])) songs.set(r[0], Object.fromEntries(FIELDS.map((f, i) => [f, r[i]]))); });
+        save();
+      } catch (e) { console.warn('merge skipped', e.message); }
       execFileSync('git', ['add', 'data/bpm-jp.json', 'data/jp'], { cwd: root });
       execFileSync('git', ['commit', '-q', '-m', msg], { cwd: root });
       execFileSync('git', ['pull', '-q', '--rebase', '-X', 'theirs', 'origin', 'main'], { cwd: root });

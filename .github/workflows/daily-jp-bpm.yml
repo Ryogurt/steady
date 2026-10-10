@@ -30,10 +30,11 @@ jobs:
           node-version: 22
       - name: Install ffmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
-      - name: Set the commit identity
+      - name: Set the commit identity and start from the newest data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull -q --ff-only origin main
       - name: Collect Japanese song BPMs
         env:
           TIME_LIMIT_MIN: ${{ github.event.inputs.minutes || '25' }}
@@ -42,6 +43,11 @@ jobs:
       - name: Commit the new data
         if: always()
         run: |
+          # never overwrite songs added meanwhile: merge what is on GitHub now, then rebuild the shards
+          git fetch -q origin main
+          git show origin/main:data/bpm-jp.json > "$RUNNER_TEMP/remote.json" || true
+          node tools/merge-remote.mjs "$RUNNER_TEMP/remote.json"
+          TIME_LIMIT_MIN=0 node tools/update-jp-bpm.mjs
           git add data/bpm-jp.json data/jp
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
           git commit -m "Add Japanese song BPMs ($(date -u +%Y-%m-%d))"
