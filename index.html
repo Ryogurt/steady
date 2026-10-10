@@ -60,11 +60,13 @@ img{max-width:100%;display:block}
 .calib.ok .dot{background:var(--brass)}
 
 /* ---------- mode switch ---------- */
-.modes{display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:999px;background:var(--panel);margin:10px 0 4px;position:relative}
+.modes{display:grid;grid-template-columns:repeat(3,1fr);padding:4px;border-radius:999px;background:var(--panel);margin:10px 0 4px;position:relative}
 .modes button{position:relative;z-index:1;padding:9px 0;font-weight:700;font-size:14px;color:var(--muted);transition:color .25s}
 .modes button[aria-selected="true"]{color:var(--brass-ink)}
-.modes .thumb{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:var(--brass);transition:transform .35s cubic-bezier(.3,1.4,.5,1)}
+.modes .thumb{position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 8px) / 3);border-radius:999px;background:var(--brass);transition:transform .35s cubic-bezier(.3,1.4,.5,1)}
 .modes[data-mode="song"] .thumb{transform:translateX(100%)}
+.modes[data-mode="memo"] .thumb{transform:translateX(200%)}
+.modes button{font-size:13px}
 
 /* ---------- chosen song ---------- */
 .song{display:flex;align-items:center;gap:12px;margin-top:12px;padding:10px;border-radius:var(--r-m);background:var(--panel);text-align:left;width:100%}
@@ -95,6 +97,35 @@ img{max-width:100%;display:block}
 /* ---------- screens ---------- */
 body[data-screen="metro"] .m-only{display:none!important}
 body[data-screen="measure"] .t-only{display:none!important}
+body[data-screen="memo"] .m-only,body[data-screen="memo"] .t-only,body[data-screen="memo"] .practice{display:none!important}
+body:not([data-screen="memo"]) .memo-only{display:none!important}
+/* ---------- BPM memo ---------- */
+.memohead{display:flex;align-items:baseline;justify-content:space-between;margin-top:22px}
+.memohead h2{font-size:20px;font-weight:700}
+.memohead span{font-size:12px;color:var(--muted)}
+.memofind{width:100%;margin-top:12px;font:inherit;font-size:16px;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--paper);outline:none}
+.memofind:focus{border-color:var(--brass)}
+.memolist{list-style:none;padding:0;margin:8px 0 0}
+.memo{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.memo .play{display:flex;align-items:center;gap:14px;text-align:left;min-width:0;padding:0}
+.memo .bpm{font-family:var(--f-num);font-weight:800;font-size:34px;line-height:1;font-variation-settings:"wdth" 125;font-variant-numeric:tabular-nums;min-width:2.4em}
+.memo .bpm small{display:block;font-family:var(--f-body);font-size:10px;font-weight:500;color:var(--muted);margin-top:4px;letter-spacing:.02em}
+.memo .t{font-weight:700;line-height:1.4;overflow-wrap:anywhere}
+.memo .n{font-size:12px;color:var(--muted);line-height:1.5;margin-top:2px;overflow-wrap:anywhere}
+.memo .acts{display:flex;gap:6px}
+.iconbtn{width:40px;height:40px;border-radius:50%;background:var(--panel);display:grid;place-items:center;color:var(--paper)}
+.iconbtn svg{width:18px;height:18px}
+.memoempty{padding:36px 8px;text-align:center;color:var(--muted);font-size:14px;line-height:1.8}
+.memoempty b{color:var(--paper)}
+.savechip{color:var(--brass)}
+textarea.note{width:100%;min-height:84px;resize:vertical;font:inherit;font-size:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--ink);color:var(--paper);outline:none;line-height:1.6}
+textarea.note:focus{border-color:var(--brass)}
+.bpmedit{display:flex;align-items:center;gap:10px}
+.bpmedit input{width:110px;text-align:center;font-family:var(--f-num);font-weight:800;font-size:30px;font-variation-settings:"wdth" 125;padding:6px 8px;border-radius:12px;border:1px solid var(--line);background:var(--ink);color:var(--paper);outline:none}
+.sheetacts{display:flex;gap:10px;margin-top:22px}
+.sheetacts .start{flex:1;height:52px;font-size:16px}
+.danger{color:var(--late);font-weight:700;font-size:14px;padding:12px 4px}
+.lookup{margin-top:10px}
 .tapper{position:relative;overflow:hidden;margin-top:18px;width:100%;height:120px;border-radius:var(--r-l);background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;touch-action:none}
 .tapper .lbl{font-weight:700;font-size:15px}
 .tapper .sub{font-size:12px;color:var(--muted)}
@@ -249,6 +280,7 @@ body[data-screen="measure"] .t-only{display:none!important}
     <span class="thumb" aria-hidden="true"></span>
     <button id="modeMetro" role="tab" aria-selected="true">メトロノーム</button>
     <button id="modeSong" role="tab" aria-selected="false">曲に合わせる</button>
+    <button id="modeMemo" role="tab" aria-selected="false">BPMメモ</button>
   </div>
 
   <button class="song empty m-only" id="songCard">
@@ -257,7 +289,7 @@ body[data-screen="measure"] .t-only{display:none!important}
     <span class="go">探す</span>
   </button>
 
-  <section class="stage" id="stage" aria-label="テンポと測定">
+  <section class="stage practice" id="stage" aria-label="テンポと測定">
     <canvas id="orbit"></canvas>
     <div class="center" id="center" aria-live="polite" title="上下にドラッグでBPMを変更">
       <div class="big" id="bigNum">100</div>
@@ -269,17 +301,24 @@ body[data-screen="measure"] .t-only{display:none!important}
     </div>
   </section>
 
-  <div class="chips" id="chips">
+  <div class="chips practice" id="chips">
     <button class="chip" data-open="settings"><b id="cMeter">4/4</b></button>
     <button class="chip m-only" data-open="settings"><b id="cDur">30秒</b></button>
     <button class="chip m-only" data-open="settings"><span>クリック</span><b id="cClick">ずっと</b></button>
     <button class="chip t-only" data-open="settings"><span>音</span><b id="cSnd">クリック</b></button>
+    <button class="chip savechip" id="saveMemo">＋ メモに保存</button>
   </div>
 
   <button class="tapper t-only" id="tapTempo" aria-label="叩いてテンポを決める">
     <span class="lbl">叩いてテンポを決める</span>
     <span class="sub" id="tapTempoSub">曲や頭の中のテンポに合わせて4回以上</span>
   </button>
+
+  <section class="memo-only" aria-label="BPMメモ">
+    <div class="memohead"><h2>BPMメモ</h2><span id="memoCount"></span></div>
+    <input class="memofind" id="memoFind" type="search" placeholder="メモを絞り込む" aria-label="メモを絞り込む">
+    <ul class="memolist" id="memoList"></ul>
+  </section>
 
   <button class="pad m-only" id="pad" aria-label="タップ">
     <span class="lbl" id="padLbl">ここを叩く</span>
@@ -351,6 +390,27 @@ body[data-screen="measure"] .t-only{display:none!important}
   </div></div>
 </section>
 
+<!-- memo editor -->
+<section class="sheet" id="memoSheet" role="dialog" aria-modal="true" aria-labelledby="memoTitle">
+  <div class="grab"></div>
+  <header><h2 id="memoTitle">メモに保存</h2><button class="close" data-close aria-label="閉じる">✕</button></header>
+  <div class="body"><div class="in">
+    <form id="memoForm" autocomplete="off">
+      <div class="field"><label for="mTitle">曲名・メモの名前</label><input id="mTitle" type="text" placeholder="例：夜に駆ける／基礎練 8分音符" enterkeyhint="done"></div>
+      <div class="field"><label for="mArtist">アーティスト（任意）</label><input id="mArtist" type="text" placeholder="YOASOBI"></div>
+      <div class="group"><div class="k">BPM</div>
+        <div class="bpmedit"><button type="button" class="nudge" id="mMinus" aria-label="1下げる">−</button><input id="mBpm" type="number" inputmode="numeric" min="40" max="240" step="1" aria-label="BPM"><button type="button" class="nudge" id="mPlus" aria-label="1上げる">+</button></div>
+        <button type="button" class="textbtn lookup" id="mLookup">曲名からBPMを調べる</button>
+      </div>
+      <div class="group"><div class="k">拍子</div><div class="seg" id="mPer">
+        <button type="button" data-v="2">2/4</button><button type="button" data-v="3">3/4</button><button type="button" data-v="4">4/4</button><button type="button" data-v="6">6/8</button></div></div>
+      <div class="field"><label for="mNote">メモ（任意）</label><textarea class="note" id="mNote" placeholder="例：サビで走りがち。最初は 100 から"></textarea></div>
+      <div class="sheetacts"><button class="start" type="submit" id="mSave">保存</button></div>
+      <button type="button" class="danger" id="mDelete" hidden>このメモを削除</button>
+    </form>
+  </div></div>
+</section>
+
 <!-- song search -->
 <section class="sheet" id="finder" role="dialog" aria-modal="true" aria-labelledby="finderTitle">
   <div class="grab"></div>
@@ -377,7 +437,7 @@ body[data-screen="measure"] .t-only{display:none!important}
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="tempo.js?v=20261011-3"></script>
-<script src="app.js?v=20261011-3"></script>
+<script src="tempo.js?v=20261011-4"></script>
+<script src="app.js?v=20261011-4"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 /* Steady — rhythm-keeping practice. All app logic. */
 (() => {
 'use strict';
-const VERSION = '20261011-3';
+const VERSION = '20261011-4';
 const PROXY_URL = 'https://steady-bpm.ryo-private-mail.workers.dev/';
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -85,14 +85,18 @@ function setMode(m) {
   $('modes').dataset.mode = m;
   $('modeMetro').setAttribute('aria-selected', String(m === 'metro'));
   $('modeSong').setAttribute('aria-selected', String(m === 'song'));
-  if (metro) stopMetro();
-  document.body.dataset.screen = m === 'song' ? 'measure' : 'metro';
-  $('go').textContent = m === 'song' ? 'スタート' : '再生';
+  $('modeMemo').setAttribute('aria-selected', String(m === 'memo'));
+  if (metro && m !== 'metro') stopMetro();
+  document.body.dataset.screen = m === 'song' ? 'measure' : m === 'memo' ? 'memo' : 'metro';
+  if (!metro) $('go').textContent = m === 'song' ? 'スタート' : m === 'memo' ? '＋ メモを追加' : '再生';
+  $('go').classList.toggle('stop', !!metro && m === 'metro');
   renderSongCard(); renderChips(); idleCenter(); idlePad();
+  if (m === 'memo') renderMemos();
   if (lastResult) requestAnimationFrame(() => { drawTimeline(lastResult); drawFinger(lastResult); });
 }
 $('modeMetro').onclick = () => setMode('metro');
 $('modeSong').onclick = () => setMode('song');
+$('modeMemo').onclick = () => setMode('memo');
 
 function renderSongCard() {
   const c = $('songCard'), s = S.song;
@@ -105,7 +109,7 @@ function renderSongCard() {
   $('songArtist').textContent = s ? s.artist + ' ・ ' + s.bpm + ' BPM' : '探すとBPMが入ります（任意）';
   c.querySelector('.go').textContent = s ? '変える' : '探す';
 }
-$('songCard').onclick = () => openSheet('finder');
+$('songCard').onclick = () => { memoDraft = null; openSheet('finder'); };
 
 const MUTE_LABEL = { 0: 'ずっと', 1: '1小節おきに消す', 2: '2小節おきに消す', 4: '4小節おきに消す' };
 const VOL_LABEL = { 0: '鳴らさない', 0.25: '小さく', 1: '普通' };
@@ -490,6 +494,7 @@ function startCalib(thenStart) {
 }
 $('introGo').onclick = () => { closeSheets(); ensureCtx(); startCalib(true); };
 $('go').onclick = () => {
+  if (S.mode === 'memo') { openMemo(null, null); return; }
   if (S.mode === 'metro') { metro ? stopMetro() : startMetro(); return; }
   if (run) { stopRun(); return; }
   if (calibMs == null) { openSheet('intro'); return; }
@@ -776,7 +781,9 @@ function trackCard(t, opts) {
   use.onclick = () => chooseSong(Object.assign({}, t, { bpm: t.bpm }));
   const PLAY = '▶ 試聴して確かめる', play = el('button', 'btn', PLAY); play.type = 'button';
   const meas = el('button', 'btn ghost', 'BPMを測る'); meas.type = 'button';
-  acts.append(use, play, meas);
+  const memoB = el('button', 'btn ghost', 'メモに保存'); memoB.type = 'button'; memoB.hidden = true;
+  memoB.onclick = () => memoFromSearch(Object.assign({}, t, { bpm: t.bpm }));
+  acts.append(use, memoB, play, meas);
   const showBpm = (bpm, tagText, gold) => {
     t.bpm = Math.round(bpm); line.innerHTML = '';
     const b = el('span', 'bpm num', String(t.bpm)); b.appendChild(el('small', null, 'BPM')); line.appendChild(b);
@@ -784,7 +791,7 @@ function trackCard(t, opts) {
     const x2 = el('button', 'tag', '×2'), h2 = el('button', 'tag', '÷2'); x2.type = h2.type = 'button';
     x2.onclick = () => { if (t.bpm * 2 <= 240) showBpm(t.bpm * 2, tagText, gold); }; h2.onclick = () => { if (t.bpm / 2 >= 40) showBpm(t.bpm / 2, tagText, gold); };
     line.append(x2, h2);
-    use.hidden = false; meas.hidden = true;
+    use.hidden = false; memoB.hidden = false; meas.hidden = true;
   };
   const measure = async () => {
     meas.disabled = true; line.innerHTML = ''; line.appendChild(el('span', 'measuring', '試聴を解析中…'));
@@ -847,7 +854,8 @@ function showResults(d) {
       l.appendChild(el('div', 't', s.title)); l.appendChild(el('div', 'a', s.artist + (s.time_sig ? ' ・ ' + s.time_sig + '拍子' : ''))); r.appendChild(l);
       const rr = el('div', 'r'); rr.appendChild(el('span', 'bpm num', String(s.tempo)));
       const b = el('button', 'btn', '測る'); b.type = 'button'; b.onclick = () => chooseSong({ title: s.title, artist: s.artist, bpm: s.tempo, art: dbHit && tracks[0] && s.match ? tracks[0].art : '' });
-      rr.appendChild(b); r.appendChild(rr); box.appendChild(r);
+      const mb = el('button', 'btn ghost', 'メモ'); mb.type = 'button'; mb.onclick = () => memoFromSearch({ title: s.title, artist: s.artist, bpm: s.tempo });
+      rr.appendChild(mb); rr.appendChild(b); r.appendChild(rr); box.appendChild(r);
     });
   }
 }
@@ -877,6 +885,102 @@ $('searchForm').addEventListener('submit', async (e) => {
   finally { $('askBtn').disabled = false; }
 });
 (() => { const q = store.get('steady.q', null); if (q) { $('qArtist').value = q.a || ''; $('qTitle').value = q.t || ''; } })();
+
+/* ---------- BPM memo ---------- */
+// Saved on this phone only (localStorage). Each memo: id, title, artist, bpm, per, note, art, at
+let memos = store.get('steady.memos', []);
+const saveMemos = () => store.set('steady.memos', memos);
+let editing = null, memoDraft = null, delArmed = false;
+const ICON = {
+  play: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4l13 8-13 8z"></path></svg>',
+  measure: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h3l2-6 3 12 3-9 2 3h7"></path></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg>',
+};
+const perLabel = (p) => (p === 6 ? '6/8' : (p || 4) + '/4');
+function iconBtn(kind, label, fn) { const b = el('button', 'iconbtn'); b.type = 'button'; b.setAttribute('aria-label', label); b.innerHTML = ICON[kind]; b.onclick = fn; return b; }
+function renderMemos() {
+  const ul = $('memoList'), q = nrm($('memoFind').value);
+  ul.innerHTML = '';
+  $('memoCount').textContent = memos.length ? memos.length + '件' : '';
+  $('memoFind').hidden = memos.length < 6;
+  const list = memos.filter((m) => !q || nrm(m.title + m.artist + m.note).includes(q));
+  if (!memos.length) {
+    const e = el('li', 'memoempty');
+    e.append('よく練習する曲のBPMを残しておけます。');
+    e.appendChild(el('br'));
+    e.appendChild(el('b', null, '下の「＋ メモを追加」'));
+    e.append('か、メトロノームの「＋ メモに保存」から追加できます。');
+    ul.appendChild(e); return;
+  }
+  if (!list.length) { ul.appendChild(el('li', 'memoempty', '一致するメモはありません')); return; }
+  list.forEach((m) => {
+    const li = el('li', 'memo');
+    const p = el('button', 'play'); p.type = 'button'; p.setAttribute('aria-label', m.title + ' を ' + m.bpm + ' BPM で鳴らす');
+    const b = el('span', 'bpm', String(m.bpm)); b.appendChild(el('small', null, 'BPM ・ ' + perLabel(m.per))); p.appendChild(b);
+    const tx = el('span'); tx.style.minWidth = '0';
+    tx.appendChild(el('div', 't', m.title));
+    const sub = [m.artist, m.note].filter(Boolean).join(' ・ ');
+    if (sub) tx.appendChild(el('div', 'n', sub));
+    p.appendChild(tx);
+    p.onclick = () => useMemo(m, 'metro');
+    const acts = el('div', 'acts');
+    acts.append(iconBtn('measure', 'このBPMで測る', () => useMemo(m, 'song')), iconBtn('edit', '編集', () => openMemo(m, null)));
+    li.append(p, acts); ul.appendChild(li);
+  });
+}
+$('memoFind').addEventListener('input', renderMemos);
+function useMemo(m, where) {
+  m.at = Date.now(); memos = [m].concat(memos.filter((x) => x !== m)); saveMemos();
+  S.per = m.per || 4; setBpm(m.bpm, true);
+  if (where === 'song') {
+    S.song = { title: m.title, artist: m.artist || '', art: m.art || '', bpm: m.bpm }; save();
+    setMode('song'); toast('「' + m.title + '」' + m.bpm + ' BPMで測定します');
+  } else {
+    setMode('metro'); startMetro(); toast('「' + m.title + '」' + m.bpm + ' BPM');
+  }
+}
+function setMemoPer(p) { $('mPer').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.v) === p))); $('mPer').dataset.v = p; }
+$('mPer').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setMemoPer(Number(b.dataset.v)); });
+function openMemo(m, preset) {
+  editing = m;
+  const v = Object.assign({ title: '', artist: '', bpm: S.bpm, per: S.per, note: '' }, m || {}, preset || {});
+  $('mTitle').value = v.title; $('mArtist').value = v.artist || ''; $('mBpm').value = Math.round(v.bpm); $('mNote').value = v.note || '';
+  $('mTitle').dataset.art = v.art || '';
+  setMemoPer(v.per || 4);
+  $('memoTitle').textContent = m ? 'メモを編集' : 'メモに保存';
+  $('mDelete').hidden = !m; $('mDelete').textContent = 'このメモを削除'; delArmed = false;
+  openSheet('memoSheet');
+}
+[['mMinus', -1], ['mPlus', 1]].forEach(([id, d]) => ($(id).onclick = () => { $('mBpm').value = Math.max(40, Math.min(240, (Math.round(Number($('mBpm').value)) || S.bpm) + d)); }));
+$('memoForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const bpm = Math.round(Number($('mBpm').value));
+  if (!(bpm >= 40 && bpm <= 240)) { toast('BPMは40〜240で入れてください'); $('mBpm').focus(); return; }
+  const v = { title: $('mTitle').value.trim() || bpm + ' BPM のメモ', artist: $('mArtist').value.trim(), bpm, per: Number($('mPer').dataset.v) || 4, note: $('mNote').value.trim(), art: $('mTitle').dataset.art || '', at: Date.now() };
+  if (editing) { Object.assign(editing, v); memos = [editing].concat(memos.filter((x) => x !== editing)); }
+  else memos.unshift(Object.assign({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6) }, v));
+  saveMemos(); closeSheets(); renderMemos();
+  toast(editing ? 'メモを更新しました' : '「' + v.title + '」を保存しました');
+  editing = null; memoDraft = null;
+});
+$('mDelete').onclick = () => {
+  if (!editing) return;
+  if (!delArmed) { delArmed = true; $('mDelete').textContent = 'もう一度押すと削除します'; return; }
+  memos = memos.filter((x) => x !== editing); saveMemos(); closeSheets(); renderMemos(); toast('メモを削除しました'); editing = null;
+};
+// look the BPM up by song name, then come back to the editor with it
+$('mLookup').onclick = () => {
+  memoDraft = { editing, note: $('mNote').value, per: Number($('mPer').dataset.v) || 4 };
+  const t = $('mTitle').value.trim(), a = $('mArtist').value.trim();
+  if (t) $('qTitle').value = t; if (a) $('qArtist').value = a;
+  openSheet('finder');
+  if (t) $('searchForm').requestSubmit ? $('searchForm').requestSubmit() : $('askBtn').click();
+};
+function memoFromSearch(s) {
+  const d = memoDraft; memoDraft = null;
+  openMemo(d ? d.editing : null, { title: s.title, artist: s.artist, bpm: s.bpm, art: s.art || '', per: d ? d.per : S.per, note: d ? d.note : (d && d.editing ? d.editing.note : '') });
+}
+$('saveMemo').onclick = () => openMemo(null, { bpm: S.bpm, per: S.per, title: S.mode === 'song' && S.song ? S.song.title : '', artist: S.mode === 'song' && S.song ? S.song.artist : '', art: S.mode === 'song' && S.song ? S.song.art : '' });
 
 /* ---------- no zoom, no text selection ---------- */
 ['gesturestart', 'gesturechange', 'gestureend'].forEach((t) => document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
