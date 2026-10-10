@@ -1,7 +1,7 @@
 /* Steady — rhythm-keeping practice. All app logic. */
 (() => {
 'use strict';
-const VERSION = '20261011-1';
+const VERSION = '20261011-2';
 const PROXY_URL = 'https://steady-bpm.ryo-private-mail.workers.dev/';
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -692,6 +692,20 @@ async function analyzeAudio(arrayBuffer) {
   for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) x[i] += d[i] / buf.numberOfChannels; }
   return window.SteadyTempo.estimateTempo(x, buf.sampleRate);
 }
+// Steady's own Japanese list is split into shards by title (see tools/update-jp-bpm.mjs)
+const SHARDS = 128;
+const bucketOf = (title) => { let h = 2166136261; const s = nrm(title); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h % SHARDS; };
+const shardCache = new Map();
+async function loadShards(titles) {
+  const want = [...new Set(titles.filter(Boolean).map(bucketOf))];
+  const out = [];
+  await Promise.all(want.map(async (b) => {
+    if (!shardCache.has(b)) shardCache.set(b, fetch('data/jp/' + b + '.json').then((r) => (r.ok ? r.json() : [])).catch(() => []));
+    (await shardCache.get(b)).forEach((r) => out.push({ id: r[0], title: r[1], artist: r[2], titleEn: r[3], artistEn: r[4], bpm: r[5], conf: r[6] }));
+  }));
+  jpData = { songs: out };
+  return jpData;
+}
 let jpData = null;
 async function loadJp() {
   if (jpData) return jpData;
@@ -845,10 +859,9 @@ $('searchForm').addEventListener('submit', async (e) => {
   document.activeElement && document.activeElement.blur();
   $('askBtn').disabled = true; $('searchStatus').textContent = '調べています…'; $('searchResult').innerHTML = '';
   try {
-    const jpLoad = loadJp();
     let tracks = [];
     try { tracks = await findTracks(a, t); } catch (err) { tracks = []; }
-    await jpLoad;
+    await loadShards([t].concat(...tracks.map((x) => [x.title, x.titleEn])));
     // Apple Music searched artist + title together; trust a title match when the artist is spelled differently
     const top = tracks.find((x) => !a || near(x.artist, a) || near(x.artistEn, a)) || tracks.find((x) => near(x.title, t) || near(x.titleEn, t));
     const aa = top ? [top.artist, top.artistEn].filter(Boolean) : [], at = top ? [top.title, top.titleEn].filter(Boolean) : [];

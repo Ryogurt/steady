@@ -66,14 +66,30 @@ async function main() {
     else (d.songs || []).forEach((s) => songs.set(s.id, { id: s.id, title: s.title, artist: s.artist, titleEn: s.titleEn || '', artistEn: s.artistEn || '', bpm: s.bpm, conf: s.confidence === 'high' ? 2 : s.confidence === 'medium' ? 1 : 0, artistId: s.artistId || 0, added: s.added || '' }));
   } catch {}
   const startCount = songs.size;
+  // The page loads only one small shard: songs are bucketed by their normalized title
+  // (and English title), with the same hash the page uses (see bucketOf in app.js).
+  const SHARDS = 128;
+  const nrm = (v) => String(v || '').toLowerCase().normalize('NFKC').replace(/[\s\p{P}\p{S}]/gu, '');
+  const bucketOf = (title) => { let h = 2166136261; const s = nrm(title); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h % SHARDS; };
   const save = () => {
     const rows = [...songs.values()].sort((a, b) => (a.artist + a.title).localeCompare(b.artist + b.title, 'ja')).map((s) => FIELDS.map((f) => s[f] ?? ''));
     fs.mkdirSync(path.dirname(DATA), { recursive: true });
-    fs.writeFileSync(DATA, JSON.stringify({ v: 2, updated: new Date().toISOString(), count: rows.length, fields: FIELDS, rows }) + '\n');
+    const updated = new Date().toISOString();
+    fs.writeFileSync(DATA, JSON.stringify({ v: 2, updated, count: rows.length, fields: FIELDS, rows }) + '\n');
+    const dir = path.join(root, 'data', 'jp');
+    fs.mkdirSync(dir, { recursive: true });
+    const shards = Array.from({ length: SHARDS }, () => []);
+    for (const r of rows) {
+      const short = r.slice(0, 7); // id, title, artist, titleEn, artistEn, bpm, conf
+      const b1 = bucketOf(r[1]); shards[b1].push(short);
+      if (r[3]) { const b2 = bucketOf(r[3]); if (b2 !== b1) shards[b2].push(short); }
+    }
+    shards.forEach((rs, i) => fs.writeFileSync(path.join(dir, i + '.json'), JSON.stringify(rs)));
+    fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify({ updated, count: rows.length, shards: SHARDS }));
   };
   const commit = (msg) => {
     try {
-      execFileSync('git', ['add', 'data/bpm-jp.json'], { cwd: root });
+      execFileSync('git', ['add', 'data/bpm-jp.json', 'data/jp'], { cwd: root });
       execFileSync('git', ['commit', '-q', '-m', msg], { cwd: root });
       execFileSync('git', ['pull', '-q', '--rebase', '-X', 'theirs', 'origin', 'main'], { cwd: root });
       execFileSync('git', ['push', '-q'], { cwd: root });
@@ -133,7 +149,7 @@ async function main() {
     if (!refill.chartDone) {
       refill.chartDone = true;
       try {
-        const c = await (await fetch('https://rss.applemarketingtools.com/api/v2/jp/music/most-played/100/songs.json')).json();
+        const c = await (await fetch('https://rss.marketingtools.apple.com/api/v2/jp/music/most-played/100/songs.json', { headers: { 'User-Agent': UA, Accept: 'application/json' } })).json();
         const ids = (c.feed && c.feed.results ? c.feed.results : []).map((r) => r.id).filter((id) => !seenIds.has(Number(id)));
         for (let i = 0; i < ids.length; i += 150) enqueue((await apple(`https://itunes.apple.com/lookup?id=${ids.slice(i, i + 150).join(',')}&country=JP&lang=ja_jp`)).results);
       } catch (e) { console.warn('chart', e.message); }

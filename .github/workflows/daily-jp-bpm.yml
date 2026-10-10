@@ -42,7 +42,7 @@ jobs:
       - name: Commit the new data
         if: always()
         run: |
-          git add data/bpm-jp.json
+          git add data/bpm-jp.json data/jp
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
           git commit -m "Add Japanese song BPMs ($(date -u +%Y-%m-%d))"
           git pull -q --rebase -X theirs origin main
