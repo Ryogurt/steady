@@ -1,7 +1,7 @@
 /* Steady — rhythm-keeping practice. All app logic. */
 (() => {
 'use strict';
-const VERSION = '20261010-4';
+const VERSION = '20261011-1';
 const PROXY_URL = 'https://steady-bpm.ryo-private-mail.workers.dev/';
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -85,10 +85,11 @@ function setMode(m) {
   $('modes').dataset.mode = m;
   $('modeMetro').setAttribute('aria-selected', String(m === 'metro'));
   $('modeSong').setAttribute('aria-selected', String(m === 'song'));
-  $('songCard').hidden = m !== 'song';
-  $('gMute').hidden = m === 'song';
-  $('gVol').hidden = m !== 'song';
+  if (metro) stopMetro();
+  document.body.dataset.screen = m === 'song' ? 'measure' : 'metro';
+  $('go').textContent = m === 'song' ? 'スタート' : '再生';
   renderSongCard(); renderChips(); idleCenter(); idlePad();
+  if (lastResult) requestAnimationFrame(() => { drawTimeline(lastResult); drawFinger(lastResult); });
 }
 $('modeMetro').onclick = () => setMode('metro');
 $('modeSong').onclick = () => setMode('song');
@@ -101,7 +102,7 @@ function renderSongCard() {
     const img = el('img', 'art'); img.src = s.art; img.alt = ''; img.id = 'songArt'; art.replaceWith(img);
   } else if (art.tagName === 'IMG') { const sp = el('span', 'art', '♪'); sp.id = 'songArt'; art.replaceWith(sp); }
   $('songTitle').textContent = s ? s.title : '曲を選ぶ';
-  $('songArtist').textContent = s ? s.artist + ' ・ ' + s.bpm + ' BPM' : '曲名で探してBPMを決めます';
+  $('songArtist').textContent = s ? s.artist + ' ・ ' + s.bpm + ' BPM' : '探すとBPMが入ります（任意）';
   c.querySelector('.go').textContent = s ? '変える' : '探す';
 }
 $('songCard').onclick = () => openSheet('finder');
@@ -111,8 +112,8 @@ const VOL_LABEL = { 0: '鳴らさない', 0.25: '小さく', 1: '普通' };
 function renderChips() {
   $('cMeter').textContent = S.per === 6 ? '6/8' : S.per + '/4';
   $('cDur').textContent = S.dur >= 120 ? '2分' : S.dur + '秒';
-  $('cClickK').textContent = S.mode === 'song' ? '曲に重ねるクリック' : 'クリック';
-  $('cClick').textContent = S.mode === 'song' ? VOL_LABEL[S.vol] : MUTE_LABEL[S.mute];
+  $('cClick').textContent = MUTE_LABEL[S.mute];
+  $('cSnd').textContent = { click: 'クリック', wood: 'ウッド', beep: '電子音' }[S.snd] || 'クリック';
   document.querySelectorAll('.seg[data-set]').forEach((seg) => {
     const k = seg.dataset.set;
     seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(String(S[k]) === b.dataset.v)));
@@ -187,6 +188,7 @@ const tone = (dev) => { const a = Math.abs(dev); return a <= 25 ? css('--brass')
 // marks: [{beat (position in bar, may be fractional), bar}], drawn on a ring that tightens bar by bar
 function drawRing(c, size, per, marks, opts) {
   const cx = size / 2, R = size / 2 - (opts.pad || 14);
+  if (R <= 4) return;   // hidden canvas (other screen)
   const line = css('--line'), paper = css('--paper'), brass = css('--brass');
   c.lineCap = 'round';
   c.strokeStyle = line; c.lineWidth = opts.thin ? 1.5 : 2;
@@ -230,7 +232,18 @@ function frameOrbit(now) {
   for (let k = 0; k < per; k++) flash[k] = (flash[k] || 0) * 0.9;
   const cx = osize / 2, R = osize / 2 - 14, brass = css('--brass');
   let phase = null;
-  if (run && !run.aligning && run.beats.length) {
+  if (metro) {
+    const t = audibleTime();
+    let h = null; for (let k = metro.hist.length - 1; k >= 0; k--) if (metro.hist[k].t <= t) { h = metro.hist[k]; break; }
+    if (h) {
+      const pos = h.i + (t - h.t) / h.bd;
+      if (h.i !== metro.last) {
+        metro.last = h.i; flash[h.i % per] = 1;
+        if (!reduceMotion && bigNum.animate) bigNum.animate([{ transform: 'scale(' + (h.i % per === 0 ? 1.06 : 1.03) + ')' }, { transform: 'scale(1)' }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      }
+      phase = (pos / per) % 1;
+    }
+  } else if (run && !run.aligning && run.beats.length) {
     const t = run.song ? audibleTime() + calS() : audibleTime();
     const pos = (t - run.beats[0]) / run.bd;               // beats since first beat
     if (pos >= -run.per) {
@@ -263,11 +276,50 @@ function frameOrbit(now) {
 }
 addEventListener('resize', () => { sizeOrbit(); if (lastResult) { drawTimeline(lastResult); drawFinger(lastResult); } });
 
+/* ---------- metronome (no measuring) ---------- */
+let metro = null;
+function startMetro() {
+  ensureCtx();
+  metro = { next: ctx.currentTime + 0.12, i: 0, hist: [], last: -1 };
+  metro.timer = setInterval(schedMetro, 20); schedMetro();
+  $('go').textContent = '停止'; $('go').classList.add('stop'); $('stage').classList.add('playing');
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').then((w) => (wake = w)).catch(() => {}); } catch (e) {}
+}
+function schedMetro() {
+  if (!metro) return;
+  while (metro.next < ctx.currentTime + 0.12) {
+    const bd = 60 / S.bpm;   // tempo changes take effect from the next beat
+    click(metro.next, metro.i % S.per === 0, S.snd, 1);
+    metro.hist.push({ t: metro.next, i: metro.i, bd }); if (metro.hist.length > 32) metro.hist.shift();
+    metro.next += bd; metro.i++;
+  }
+}
+function stopMetro() {
+  if (!metro) return;
+  clearInterval(metro.timer); metro = null;
+  $('go').textContent = '再生'; $('go').classList.remove('stop'); $('stage').classList.remove('playing');
+  try { wake && wake.release(); } catch (e) {} wake = null;
+}
+// tap to set the tempo
+(() => {
+  const host = $('tapTempo'); let taps = [];
+  host.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); ripple(e, host);
+    host.classList.add('hit'); setTimeout(() => host.classList.remove('hit'), 70);
+    const ts = e.timeStamp > 0 ? e.timeStamp : performance.now();
+    if (taps.length && ts - taps[taps.length - 1] > 2000) taps = [];
+    taps.push(ts); if (taps.length > 16) taps.shift();
+    if (taps.length < 4) { $('tapTempoSub').textContent = taps.length + '回目 ・ 4回以上で決まります'; return; }
+    setBpm(slopeBpm(taps), true);
+    $('tapTempoSub').textContent = S.bpm + ' BPM にしました' + (taps.length < 8 ? ' ・ 続けて叩くと正確に' : '');
+  });
+})();
+
 /* ---------- pad ---------- */
 const pad = $('pad');
 function idlePad() {
   $('padLbl').textContent = 'ここを叩く';
-  $('padSub').textContent = S.mode === 'song' ? '曲を流してからスタート。最初の8回で拍の位置を合わせます' : 'スタートしたら、クリックに合わせてタップ';
+  $('padSub').textContent = 'スタートでカウントが鳴り、測定が始まります';
   $('meter').innerHTML = '';
 }
 function ripple(e, host) {
@@ -278,11 +330,13 @@ function ripple(e, host) {
   host.appendChild(s); setTimeout(() => s.remove(), 600);
 }
 pad.addEventListener('pointerdown', (e) => { e.preventDefault(); ripple(e, pad); tap(e); });
-$('stage').addEventListener('pointerdown', (e) => { if (run && !e.target.closest('button')) { e.preventDefault(); tap(e); } });
+$('stage').addEventListener('pointerdown', (e) => { if (run && S.mode === 'song' && !e.target.closest('button')) { e.preventDefault(); tap(e); } });
 document.addEventListener('keydown', (e) => {
   if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat && !document.querySelector('.sheet.on') && !e.target.closest('input')) {
     if (e.target === $('go')) return;
-    e.preventDefault(); ripple(null, pad); tap(e);
+    e.preventDefault();
+    if (S.mode === 'metro') { $('go').click(); return; }
+    ripple(null, pad); tap(e);
   }
 });
 
@@ -351,7 +405,7 @@ function stopRun() {
   if (!run) return;
   clearInterval(run.timer); run = null;
   $('stage').classList.remove('running'); center.classList.remove('running');
-  $('go').textContent = 'スタート'; $('go').classList.remove('stop');
+  $('go').textContent = S.mode === 'metro' ? '再生' : 'スタート'; $('go').classList.remove('stop');
   idleCenter(); idlePad();
   try { wake && wake.release(); } catch (e) {} wake = null;
 }
@@ -436,10 +490,12 @@ function startCalib(thenStart) {
 }
 $('introGo').onclick = () => { closeSheets(); ensureCtx(); startCalib(true); };
 $('go').onclick = () => {
+  if (S.mode === 'metro') { metro ? stopMetro() : startMetro(); return; }
   if (run) { stopRun(); return; }
-  if (calibMs == null && S.mode !== 'song') { openSheet('intro'); return; }
+  if (calibMs == null) { openSheet('intro'); return; }
   closeSheets();
-  start({ bpm: S.bpm, per: S.per, dur: S.dur, mute: S.mode === 'song' ? 0 : S.mute, snd: S.snd, song: S.mode === 'song', vol: S.vol });
+  // measuring always plays the click from the start: a bar of count-in, then the first bar
+  start({ bpm: S.bpm, per: S.per, dur: S.dur, mute: S.mute, snd: S.snd, song: false, title: S.song ? S.song.title : '' });
 };
 
 function finish() {
@@ -460,10 +516,10 @@ function finish() {
     const d = r.taps.get(i);
     pts.push({ t: r.beats[i] - r.beats[r.countIn], dev: d == null ? null : d, muted: !r.song && !r.audible(i) });
   }
-  const res = analyze(pts, { bpm: r.bpm, dur: r.dur, mute: r.mute, per: r.per, song: !!r.song, songTitle: r.song && S.song ? S.song.title : '', marks: r.marks.map((m) => ({ beat: m.beat, bar: m.bar, dev: m.dev })), bars: r.bars });
+  const res = analyze(pts, { bpm: r.bpm, dur: r.dur, mute: r.mute, per: r.per, song: !!r.title, songTitle: r.title || '', marks: r.marks.map((m) => ({ beat: m.beat, bar: m.bar, dev: m.dev })), bars: r.bars });
   render(res, false);
   const h = store.get('steady.hist', []);
-  h.unshift({ at: Date.now(), bpm: r.bpm, dur: r.dur, mute: r.mute, song: !!r.song, title: res.meta.songTitle, score: res.score, mean: res.mean, sd: res.sd });
+  h.unshift({ at: Date.now(), bpm: r.bpm, dur: r.dur, mute: r.mute, song: !!r.title, title: res.meta.songTitle, score: res.score, mean: res.mean, sd: res.sd });
   store.set('steady.hist', h.slice(0, 20)); renderHist();
   setTimeout(() => $('results').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' }), 250);
 }
@@ -519,7 +575,6 @@ function render(R, sample) {
     const li = el('span'); const sw = el('i'); sw.style.background = c; li.appendChild(sw); li.append(label); li.appendChild(el('b', null, String(R.J[k]))); lg.appendChild(li);
   });
   const adv = [];
-  if (R.meta.song) adv.push('曲モードは、最初の8回で合わせた位置を基準にしています。後半のズレが大きいときは、BPMが曲とずれている可能性もあります。');
   if (R.h >= 4) {
     if (R.mean < -15) adv.push('全体に走り気味です（平均 ' + Math.abs(R.mean).toFixed(0) + 'ms 早い）。拍の後ろ側を意識してみましょう。');
     else if (R.mean > 15) adv.push('全体にもたり気味です（平均 ' + R.mean.toFixed(0) + 'ms 遅い）。次の拍を先取りする意識で。');
@@ -655,7 +710,7 @@ function chooseSong(s) {
   setBpm(s.bpm, true);
   if (S.mode !== 'song') setMode('song'); else { renderSongCard(); idleCenter(); }
   closeSheets();
-  toast('「' + s.title + '」' + Math.round(s.bpm) + ' BPMで練習します');
+  toast('「' + s.title + '」' + Math.round(s.bpm) + ' BPMで測定します。曲を流してスタート');
 }
 
 // preview playback + tap along

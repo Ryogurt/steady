@@ -92,6 +92,15 @@ img{max-width:100%;display:block}
 .stage.running .nudge{opacity:0;pointer-events:none;width:0;margin:0}
 .stage::before{content:"";position:absolute;inset:8%;border-radius:50%;background:radial-gradient(circle,rgba(233,180,76,.07),transparent 62%);pointer-events:none}
 
+/* ---------- screens ---------- */
+body[data-screen="metro"] .m-only{display:none!important}
+body[data-screen="measure"] .t-only{display:none!important}
+.tapper{position:relative;overflow:hidden;margin-top:18px;width:100%;height:120px;border-radius:var(--r-l);background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;touch-action:none}
+.tapper .lbl{font-weight:700;font-size:15px}
+.tapper .sub{font-size:12px;color:var(--muted)}
+.tapper.hit{background:var(--panel-2)}
+.tapper .ripple{position:absolute;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;border:2px solid var(--brass);pointer-events:none;animation:ripple .55s cubic-bezier(.2,.7,.3,1) forwards}
+.stage.playing .center .big{text-shadow:0 0 28px rgba(233,180,76,.18)}
 /* ---------- settings chips ---------- */
 .chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:14px 0 0}
 .chip{display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:999px;background:var(--panel);font-size:13px;color:var(--muted)}
@@ -233,18 +242,18 @@ img{max-width:100%;display:block}
 <main class="app" id="app">
   <header class="top">
     <div class="mark" aria-label="Steady"><i aria-hidden="true"></i>Steady</div>
-    <button class="calib" id="calibChip" aria-label="遅延補正"><span class="dot"></span><span id="calibText">補正前</span></button>
+    <button class="calib m-only" id="calibChip" aria-label="遅延補正"><span class="dot"></span><span id="calibText">補正前</span></button>
   </header>
 
-  <div class="modes" id="modes" role="tablist" aria-label="合わせる相手" data-mode="metro">
+  <div class="modes" id="modes" role="tablist" aria-label="画面" data-mode="metro">
     <span class="thumb" aria-hidden="true"></span>
     <button id="modeMetro" role="tab" aria-selected="true">メトロノーム</button>
     <button id="modeSong" role="tab" aria-selected="false">曲に合わせる</button>
   </div>
 
-  <button class="song empty" id="songCard" hidden>
+  <button class="song empty m-only" id="songCard">
     <span class="art" id="songArt" aria-hidden="true">♪</span>
-    <span class="meta"><span class="t" id="songTitle" style="display:block">曲を選ぶ</span><span class="a" id="songArtist" style="display:block">曲名で探してBPMを決めます</span></span>
+    <span class="meta"><span class="t" id="songTitle" style="display:block">曲を選ぶ</span><span class="a" id="songArtist" style="display:block">探すとBPMが入ります（任意）</span></span>
     <span class="go">探す</span>
   </button>
 
@@ -262,18 +271,23 @@ img{max-width:100%;display:block}
 
   <div class="chips" id="chips">
     <button class="chip" data-open="settings"><b id="cMeter">4/4</b></button>
-    <button class="chip" data-open="settings"><b id="cDur">30秒</b></button>
-    <button class="chip" data-open="settings" id="cClickWrap"><span id="cClickK">クリック</span><b id="cClick">ずっと</b></button>
-    <button class="chip tempo" id="tapTempoChip" hidden>叩いてBPMを測る</button>
+    <button class="chip m-only" data-open="settings"><b id="cDur">30秒</b></button>
+    <button class="chip m-only" data-open="settings"><span>クリック</span><b id="cClick">ずっと</b></button>
+    <button class="chip t-only" data-open="settings"><span>音</span><b id="cSnd">クリック</b></button>
   </div>
 
-  <button class="pad" id="pad" aria-label="タップ">
+  <button class="tapper t-only" id="tapTempo" aria-label="叩いてテンポを決める">
+    <span class="lbl">叩いてテンポを決める</span>
+    <span class="sub" id="tapTempoSub">曲や頭の中のテンポに合わせて4回以上</span>
+  </button>
+
+  <button class="pad m-only" id="pad" aria-label="タップ">
     <span class="lbl" id="padLbl">ここを叩く</span>
     <span class="sub" id="padSub">スタートしたら、拍に合わせてタップ</span>
     <span class="meter" aria-hidden="true" id="meter"></span>
   </button>
 
-  <section class="results" id="results" aria-label="結果">
+  <section class="results m-only" id="results" aria-label="結果">
     <div class="rhead">
       <div>
         <span class="sample" id="sampleTag">サンプル</span>
@@ -294,12 +308,12 @@ img{max-width:100%;display:block}
     <ul class="advice" id="advice"></ul>
   </section>
 
-  <section class="hist">
+  <section class="hist m-only">
     <h2>最近の記録</h2>
     <ul id="history"><li class="none">測定するとここに残ります</li></ul>
   </section>
 
-  <p class="foot">判定は ±25ms 以内がぴったり、±50ms まで良い、±90ms まで惜しい。イヤホン、とくにBluetoothを使うときは、つないだ状態で遅延補正をやり直してください。<br>BPMデータ：<a href="https://getsongbpm.com" target="_blank" rel="noopener">GetSongBPM.com</a> ・ 曲の情報と試聴：Apple Music</p>
+  <p class="foot m-only">判定は ±25ms 以内がぴったり、±50ms まで良い、±90ms まで惜しい。イヤホン、とくにBluetoothを使うときは、つないだ状態で遅延補正をやり直してください。<br>BPMデータ：<a href="https://getsongbpm.com" target="_blank" rel="noopener">GetSongBPM.com</a> ・ 曲の情報と試聴：Apple Music</p>
 </main>
 
 <div class="dock"><div class="in"><button class="start" id="go">スタート</button></div></div>
@@ -313,16 +327,14 @@ img{max-width:100%;display:block}
   <div class="body"><div class="in">
     <div class="group"><div class="k">拍子</div><div class="seg" data-set="per">
       <button data-v="2">2/4</button><button data-v="3">3/4</button><button data-v="4">4/4</button><button data-v="6">6/8</button></div></div>
-    <div class="group"><div class="k">測定時間</div><div class="seg" data-set="dur">
+    <div class="group m-only"><div class="k">測定時間</div><div class="seg" data-set="dur">
       <button data-v="30">30秒</button><button data-v="60">60秒</button><button data-v="120">2分</button></div></div>
-    <div class="group" id="gMute"><div class="k">クリック</div><div class="seg" data-set="mute">
+    <div class="group m-only" id="gMute"><div class="k">測定中のクリック</div><div class="seg" data-set="mute">
       <button data-v="0">ずっと鳴らす</button><button data-v="1">1小節おきに消す</button><button data-v="2">2小節おき</button><button data-v="4">4小節おき</button></div>
-      <p style="font-size:12px;color:var(--muted);margin-top:8px">消える小節も測定します。一人でキープできるかを確かめられます。</p></div>
-    <div class="group" id="gVol" hidden><div class="k">曲に重ねるクリック</div><div class="seg" data-set="vol">
-      <button data-v="0">鳴らさない</button><button data-v="0.25">小さく</button><button data-v="1">普通</button></div></div>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px">最初のカウントと1小節目は必ず鳴ります。消える小節も測定するので、一人でキープできるかを確かめられます。</p></div>
     <div class="group"><div class="k">音</div><div class="seg" data-set="snd">
       <button data-v="click">クリック</button><button data-v="wood">ウッド</button><button data-v="beep">電子音</button></div></div>
-    <div class="group"><div class="k"><span>遅延補正</span><b class="num" id="calibVal" style="color:var(--paper);font-weight:600">—</b></div>
+    <div class="group m-only"><div class="k"><span>遅延補正</span><b class="num" id="calibVal" style="color:var(--paper);font-weight:600">—</b></div>
       <p style="font-size:13px;color:var(--muted)">画面に触れてから反応するまでの遅れと、音が出るまでの遅れを差し引きます。</p>
       <button class="textbtn" id="recalib">補正をやり直す</button></div>
   </div></div>
@@ -365,7 +377,7 @@ img{max-width:100%;display:block}
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="tempo.js?v=20261010-4"></script>
-<script src="app.js?v=20261010-4"></script>
+<script src="tempo.js?v=20261011-1"></script>
+<script src="app.js?v=20261011-1"></script>
 </body>
 </html>
