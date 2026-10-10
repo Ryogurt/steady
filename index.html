@@ -85,10 +85,12 @@ img{max-width:100%;display:block}
 .center.running{cursor:default}
 .center .big.early{color:var(--early)}.center .big.late{color:var(--late)}.center .big.just{color:var(--brass)}
 .center .big.small{font-size:clamp(40px,13vw,56px)}
-.nudge{position:absolute;top:50%;width:44px;height:44px;margin-top:-22px;border-radius:50%;display:grid;place-items:center;font-size:22px;color:var(--muted);transition:color .2s,background .2s}
-.nudge:active{background:var(--panel);color:var(--paper)}
-.nudge.minus{left:-6px}.nudge.plus{right:-6px}
-.stage.running .nudge{opacity:0;pointer-events:none}
+.caprow{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px}
+.caprow .cap{margin-top:0;min-width:3em}
+.nudge{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:20px;line-height:1;color:var(--paper);background:var(--panel);transition:background .2s,opacity .2s}
+.nudge:active{background:var(--panel-2)}
+.stage.running .nudge{opacity:0;pointer-events:none;width:0;margin:0}
+.stage::before{content:"";position:absolute;inset:8%;border-radius:50%;background:radial-gradient(circle,rgba(233,180,76,.07),transparent 62%);pointer-events:none}
 
 /* ---------- settings chips ---------- */
 .chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:14px 0 0}
@@ -108,21 +110,24 @@ img{max-width:100%;display:block}
 .meter i{position:absolute;top:-5px;width:4px;height:16px;margin-left:-2px;border-radius:2px;transition:opacity 1.4s ease-out}
 
 /* ---------- start ---------- */
-.dock{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:12px 18px calc(12px + var(--safe-b));background:linear-gradient(to top,var(--ink) 60%,transparent)}
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:12px 18px calc(12px + var(--safe-b));background:linear-gradient(to top,var(--ink) calc(100% - 22px),transparent)}
 .dock .in{max-width:460px;margin:0 auto}
 .start{width:100%;height:58px;border-radius:999px;background:var(--brass);color:var(--brass-ink);font-weight:700;font-size:17px;letter-spacing:.02em;transition:transform .15s,background .2s}
 .start:active{transform:scale(.98)}
 .start.stop{background:var(--panel-2);color:var(--paper)}
 
 /* ---------- results ---------- */
-.results{margin-top:40px}
-.rhead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+.results{margin-top:72px}
+.rhead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.rhead>div:first-child{min-width:0}
 .score{font-family:var(--f-num);font-weight:900;font-variation-settings:"wdth" 125;font-size:96px;line-height:.82;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
 .score small{font-family:var(--f-body);font-size:15px;font-weight:500;letter-spacing:0;color:var(--muted);margin-left:6px}
 .verdict{font-size:20px;font-weight:700;margin-top:14px}
 .rmeta{font-size:12px;color:var(--muted);margin-top:4px}
 .sample{font-size:11px;font-weight:700;color:var(--brass-ink);background:var(--brass);padding:3px 9px;border-radius:999px;align-self:flex-start}
-.finger{width:120px;height:120px;flex:none}
+.fwrap{flex:none;display:flex;flex-direction:column;align-items:center;gap:6px}
+.finger{width:148px;height:148px}
+.fwrap span{font-size:11px;color:var(--muted);text-align:center;line-height:1.5}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin-top:22px;border-radius:var(--r-m);overflow:hidden;background:var(--line)}
 .stat{background:var(--panel);padding:12px 12px 10px}
 .stat .k{font-size:11px;color:var(--muted)}
@@ -150,8 +155,8 @@ img{max-width:100%;display:block}
 /* ---------- sheets ---------- */
 .scrim{position:fixed;inset:0;z-index:40;background:rgba(10,8,14,.6);opacity:0;pointer-events:none;transition:opacity .3s}
 .scrim.on{opacity:1;pointer-events:auto}
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;max-height:92dvh;display:flex;flex-direction:column;background:var(--panel);border-radius:var(--r-l) var(--r-l) 0 0;transform:translateY(105%);transition:transform .42s cubic-bezier(.2,.9,.25,1);padding-bottom:var(--safe-b)}
-.sheet.on{transform:none}
+.sheet{visibility:hidden;position:fixed;left:0;right:0;bottom:0;z-index:41;max-height:92dvh;display:flex;flex-direction:column;background:var(--panel);border-radius:var(--r-l) var(--r-l) 0 0;transform:translateY(105%);transition:transform .42s cubic-bezier(.2,.9,.25,1),visibility 0s .42s;padding-bottom:var(--safe-b)}
+.sheet.on{transform:none;visibility:visible;transition:transform .42s cubic-bezier(.2,.9,.25,1),visibility 0s}
 .sheet .in{max-width:460px;width:100%;margin:0 auto;padding:0 18px}
 .sheet header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 8px;max-width:460px;width:100%;margin:0 auto}
 .sheet header h2{font-size:18px;font-weight:700}
@@ -172,7 +177,8 @@ img{max-width:100%;display:block}
 .field input:focus{border-color:var(--brass)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .searchgo{width:100%;margin-top:14px;height:50px;border-radius:999px;background:var(--paper);color:var(--ink);font-weight:700;font-size:15px}
-.status{font-size:13px;color:var(--muted);margin-top:16px;min-height:1.4em}
+.status{font-size:13px;color:var(--muted);margin-top:12px}
+.status:empty{display:none}
 .sect{font-size:13px;color:var(--muted);margin:22px 0 6px;display:flex;justify-content:space-between;gap:8px}
 .track{display:grid;grid-template-columns:56px 1fr;gap:4px 14px;padding:14px 0;border-top:1px solid var(--line)}
 .track img,.track .noart{width:56px;height:56px;border-radius:10px;grid-row:span 3;background:var(--panel-2);object-fit:cover}
@@ -244,12 +250,14 @@ img{max-width:100%;display:block}
 
   <section class="stage" id="stage" aria-label="テンポと測定">
     <canvas id="orbit"></canvas>
-    <div class="center" id="center" aria-live="polite">
+    <div class="center" id="center" aria-live="polite" title="上下にドラッグでBPMを変更">
       <div class="big" id="bigNum">100</div>
-      <div class="cap" id="cap">BPM ・ 上下にドラッグで変更</div>
+      <div class="caprow">
+        <button class="nudge" id="minus" aria-label="BPMを1下げる">−</button>
+        <div class="cap" id="cap">BPM</div>
+        <button class="nudge" id="plus" aria-label="BPMを1上げる">+</button>
+      </div>
     </div>
-    <button class="nudge minus" id="minus" aria-label="BPMを1下げる">−</button>
-    <button class="nudge plus" id="plus" aria-label="BPMを1上げる">+</button>
   </section>
 
   <div class="chips" id="chips">
@@ -273,7 +281,7 @@ img{max-width:100%;display:block}
         <div class="verdict" id="verdict"></div>
         <div class="rmeta" id="rmeta"></div>
       </div>
-      <canvas class="finger" id="finger" aria-label="叩いた位置の分布"></canvas>
+      <div class="fwrap"><canvas class="finger" id="finger" aria-label="叩いた位置の分布"></canvas><span>叩いた位置<br>内側ほど後半</span></div>
     </div>
     <div class="stats">
       <div class="stat"><div class="k">平均のズレ</div><div class="v" id="sMean">—</div></div>
@@ -308,7 +316,8 @@ img{max-width:100%;display:block}
     <div class="group"><div class="k">測定時間</div><div class="seg" data-set="dur">
       <button data-v="30">30秒</button><button data-v="60">60秒</button><button data-v="120">2分</button></div></div>
     <div class="group" id="gMute"><div class="k">クリック</div><div class="seg" data-set="mute">
-      <button data-v="0">ずっと鳴らす</button><button data-v="1">1小節ごとに消す</button><button data-v="2">2小節ごと</button><button data-v="4">4小節ごと</button></div></div>
+      <button data-v="0">ずっと鳴らす</button><button data-v="1">1小節おきに消す</button><button data-v="2">2小節おき</button><button data-v="4">4小節おき</button></div>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px">消える小節も測定します。一人でキープできるかを確かめられます。</p></div>
     <div class="group" id="gVol" hidden><div class="k">曲に重ねるクリック</div><div class="seg" data-set="vol">
       <button data-v="0">鳴らさない</button><button data-v="0.25">小さく</button><button data-v="1">普通</button></div></div>
     <div class="group"><div class="k">音</div><div class="seg" data-set="snd">
@@ -356,7 +365,7 @@ img{max-width:100%;display:block}
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="tempo.js?v=20261010-2"></script>
-<script src="app.js?v=20261010-2"></script>
+<script src="tempo.js?v=20261010-3"></script>
+<script src="app.js?v=20261010-3"></script>
 </body>
 </html>

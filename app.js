@@ -1,7 +1,7 @@
 /* Steady — rhythm-keeping practice. All app logic. */
 (() => {
 'use strict';
-const VERSION = '20261010-2';
+const VERSION = '20261010-3';
 const PROXY_URL = 'https://steady-bpm.ryo-private-mail.workers.dev/';
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -27,9 +27,9 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 })();
 
 /* ---------- state ---------- */
-const S = Object.assign({ bpm: 100, per: 4, dur: 30, mute: 0, vol: 0, snd: 'click', mode: 'metro', song: null }, store.get('steady.s', {}));
-S.bpm = Math.round(store.get('steady.bpm', S.bpm));
-const save = () => { store.set('steady.s', S); store.set('steady.bpm', S.bpm); };
+const S = Object.assign({ bpm: Math.round(store.get('steady.bpm', 100)), per: 4, dur: 30, mute: 0, vol: 0, snd: 'click', mode: 'metro', song: null }, store.get('steady.s', {}));
+S.bpm = Math.max(40, Math.min(240, Math.round(S.bpm)));
+const save = () => store.set('steady.s', S);
 let calibMs = store.get('steady.calib2', null);
 let ctx = null, run = null, wake = null, lastResult = null;
 
@@ -77,9 +77,7 @@ function setBpm(v, quiet) {
 function idleCenter() {
   bigNum.className = 'big';
   bigNum.textContent = S.bpm;
-  if (S.mode === 'song') cap.innerHTML = S.song ? 'BPM ・ <b></b>' : 'BPM ・ 曲を選ぶか、上下にドラッグ';
-  else cap.textContent = 'BPM ・ 上下にドラッグで変更';
-  if (S.mode === 'song' && S.song) cap.querySelector('b').textContent = S.song.title;
+  cap.textContent = 'BPM';
 }
 function setMode(m) {
   if (run) stopRun();
@@ -108,7 +106,7 @@ function renderSongCard() {
 }
 $('songCard').onclick = () => openSheet('finder');
 
-const MUTE_LABEL = { 0: 'ずっと', 1: '1小節ごとに消す', 2: '2小節ごとに消す', 4: '4小節ごとに消す' };
+const MUTE_LABEL = { 0: 'ずっと', 1: '1小節おきに消す', 2: '2小節おきに消す', 4: '4小節おきに消す' };
 const VOL_LABEL = { 0: '鳴らさない', 0.25: '小さく', 1: '普通' };
 function renderChips() {
   $('cMeter').textContent = S.per === 6 ? '6/8' : S.per + '/4';
@@ -139,7 +137,7 @@ $('recalib').onclick = () => { closeSheets(); startCalib(false); };
 // drag the number up/down to change BPM; wheel on desktop
 (() => {
   let y0 = null, b0 = 0, id = null;
-  center.addEventListener('pointerdown', (e) => { if (run) return; y0 = e.clientY; b0 = S.bpm; id = e.pointerId; center.setPointerCapture(id); });
+  center.addEventListener('pointerdown', (e) => { if (run || e.target.closest('button')) return; y0 = e.clientY; b0 = S.bpm; id = e.pointerId; center.setPointerCapture(id); });
   center.addEventListener('pointermove', (e) => { if (y0 == null || e.pointerId !== id) return; setBpm(b0 + (y0 - e.clientY) / 5); });
   const end = () => { y0 = null; };
   center.addEventListener('pointerup', end); center.addEventListener('pointercancel', end);
@@ -193,6 +191,15 @@ function drawRing(c, size, per, marks, opts) {
   c.lineCap = 'round';
   c.strokeStyle = line; c.lineWidth = opts.thin ? 1.5 : 2;
   c.beginPath(); c.arc(cx, cx, R, 0, Math.PI * 2); c.stroke();
+  // subdivisions (four per beat), like the scale on a metronome dial
+  if (!opts.thin) {
+    c.strokeStyle = line; c.lineWidth = 1;
+    for (let k = 0; k < per * 4; k++) {
+      if (k % 4 === 0) continue;
+      const a = -Math.PI / 2 + (k * Math.PI * 2) / (per * 4);
+      c.beginPath(); c.moveTo(cx + Math.cos(a) * (R + 3), cx + Math.sin(a) * (R + 3)); c.lineTo(cx + Math.cos(a) * (R - (k % 2 ? 1 : 3)), cx + Math.sin(a) * (R - (k % 2 ? 1 : 3))); c.stroke();
+    }
+  }
   for (let k = 0; k < per; k++) {
     const a = -Math.PI / 2 + (k * Math.PI * 2) / per, glow = opts.flash ? opts.flash[k] || 0 : 0;
     const len = (k === 0 ? 14 : 8) * (opts.thin ? 0.6 : 1) + glow * 6;
