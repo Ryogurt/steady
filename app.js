@@ -1,7 +1,7 @@
 /* Steady — rhythm-keeping practice. All app logic. */
 (() => {
 'use strict';
-const VERSION = '20261011-2';
+const VERSION = '20261011-3';
 const PROXY_URL = 'https://steady-bpm.ryo-private-mail.workers.dev/';
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -758,8 +758,8 @@ function tapAlong(host, resBox, getCand, onUse) {
       resBox.appendChild(el('p', ok ? 'okmsg' : null, msg));
     }
     const acts = el('div', 'acts'); acts.style.display = 'flex'; acts.style.gap = '8px'; acts.style.flexWrap = 'wrap';
-    const b1 = el('button', 'btn gold', mine + ' BPMで練習'); b1.type = 'button'; b1.onclick = () => onUse(mine); acts.appendChild(b1);
-    if (cand && !ok) { const b2 = el('button', 'btn', cand + ' BPMで練習'); b2.type = 'button'; b2.onclick = () => onUse(cand); acts.appendChild(b2); }
+    const b1 = el('button', 'btn gold', mine + ' BPMで測る'); b1.type = 'button'; b1.onclick = () => onUse(mine); acts.appendChild(b1);
+    if (cand && !ok) { const b2 = el('button', 'btn', cand + ' BPMで測る'); b2.type = 'button'; b2.onclick = () => onUse(cand); acts.appendChild(b2); }
     resBox.appendChild(acts);
   });
 }
@@ -772,7 +772,7 @@ function trackCard(t, opts) {
   row.appendChild(el('div', 'a', t.artist + (t.artistEn && t.artistEn !== t.artist ? '（' + t.artistEn + '）' : '')));
   const line = el('div', 'bpmline'); row.appendChild(line);
   const acts = el('div', 'acts'); row.appendChild(acts);
-  const use = el('button', 'btn gold', 'この曲で練習'); use.type = 'button'; use.hidden = true;
+  const use = el('button', 'btn gold', 'この曲で測る'); use.type = 'button'; use.hidden = true;
   use.onclick = () => chooseSong(Object.assign({}, t, { bpm: t.bpm }));
   const PLAY = '▶ 試聴して確かめる', play = el('button', 'btn', PLAY); play.type = 'button';
   const meas = el('button', 'btn ghost', 'BPMを測る'); meas.type = 'button';
@@ -846,7 +846,7 @@ function showResults(d) {
       const r = el('div', 'dbrow'), l = el('div');
       l.appendChild(el('div', 't', s.title)); l.appendChild(el('div', 'a', s.artist + (s.time_sig ? ' ・ ' + s.time_sig + '拍子' : ''))); r.appendChild(l);
       const rr = el('div', 'r'); rr.appendChild(el('span', 'bpm num', String(s.tempo)));
-      const b = el('button', 'btn', '練習'); b.type = 'button'; b.onclick = () => chooseSong({ title: s.title, artist: s.artist, bpm: s.tempo, art: dbHit && tracks[0] && s.match ? tracks[0].art : '' });
+      const b = el('button', 'btn', '測る'); b.type = 'button'; b.onclick = () => chooseSong({ title: s.title, artist: s.artist, bpm: s.tempo, art: dbHit && tracks[0] && s.match ? tracks[0].art : '' });
       rr.appendChild(b); r.appendChild(rr); box.appendChild(r);
     });
   }
